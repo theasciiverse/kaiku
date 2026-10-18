@@ -85,7 +85,9 @@ fainter than the fakes, because closeness went negative. It's now clamped.
 
 **Found by a later bug-hunt pass** (`77c4868`): shrinking the terminal to
 a sliver mid-game crashed (a pod's clamp). It's fixed, and a test now draws
-every state at sizes from 10×4 to 240×70.
+every state at sizes from 10×4 to 240×70. Also (`376dad5`): a letter could
+lock onto an echo or pod still entering off the right edge, unseen. Only
+on-screen targets can be locked now.
 
 ## Decisions I made for you
 
