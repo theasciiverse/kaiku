@@ -1,4 +1,5 @@
 mod game;
+mod highscore;
 mod input;
 mod render;
 
@@ -44,7 +45,10 @@ fn main() -> io::Result<()> {
 fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64);
     let mut game = Game::new(seed);
+    game.best = highscore::load();
     game.start_intro();
+    // the best score is saved once per run, when the run ends on a record
+    let mut saved = false;
     let mut input = Input::new(kitty);
     let mut next = Instant::now() + TICK;
     while !input.quit {
@@ -96,6 +100,13 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         }
         if steps == 5 {
             next = now + TICK;
+        }
+        if game.finished() && game.record && !saved {
+            highscore::save(game.best);
+            saved = true;
+        }
+        if !game.finished() {
+            saved = false;
         }
     }
     Ok(())

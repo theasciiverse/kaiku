@@ -147,8 +147,21 @@ pub fn text(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) -> u16 {
     put(buf, x, y, s, style.bg(CHROME_BG))
 }
 
-/// HUD line: shield bar, lives, smart bombs, score, and the input note on the right.
-pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, bombs: u8, score: u32, note: Option<&str>) {
+/// What the HUD line shows.
+pub struct Hud<'a> {
+    pub shield: f32,
+    pub lives: u8,
+    pub bombs: u8,
+    pub score: u32,
+    pub multiplier: u32,
+    /// on the right: e.g. the input mode when it isn't exact
+    pub note: Option<&'a str>,
+}
+
+/// HUD line: shield bar, lives, smart bombs, score and chain multiplier, and
+/// the note on the right.
+pub fn hud(buf: &mut Buffer, area: Rect, h: &Hud) {
+    let Hud { shield, lives, bombs, score, multiplier, note } = *h;
     let bg = Style::default().bg(CHROME_BG);
     for x in area.left()..area.right() {
         put(buf, x, area.y, " ", bg);
@@ -171,7 +184,10 @@ pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, bombs: u8, scor
         }
     }
     x = put(buf, x + 2, area.y, "SCORE ", bg.fg(DIM));
-    put(buf, x, area.y, &format!("{score:07}"), bg.fg(TEXT).add_modifier(Modifier::BOLD));
+    x = put(buf, x, area.y, &format!("{score:07}"), bg.fg(TEXT).add_modifier(Modifier::BOLD));
+    if multiplier > 1 {
+        put(buf, x + 1, area.y, &format!("×{multiplier}"), bg.fg(palette::ramp(&palette::SIGNAL, multiplier as f32 / 8.0)).add_modifier(Modifier::BOLD));
+    }
     let right = match note {
         Some(n) => format!("{n}  ·  esc quit "),
         None => "esc quit ".to_string(),
@@ -192,4 +208,31 @@ pub fn question(buf: &mut Buffer, area: Rect, text: &str) {
     border(buf, frame);
     let style = Style::default().fg(TEXT).bg(CHROME_BG).add_modifier(Modifier::BOLD);
     put(buf, x + 1, y + 1, &format!(" {text} "), style);
+}
+
+/// A box of lines over the play area: the end-of-run summary. The first line
+/// is the title; lines are (label, value) pairs, value-less lines are centred.
+pub fn summary(buf: &mut Buffer, area: Rect, title: &str, lines: &[(String, String)], foot: &str) {
+    let label_w = lines.iter().map(|l| l.0.chars().count()).max().unwrap_or(0);
+    let value_w = lines.iter().map(|l| l.1.chars().count()).max().unwrap_or(0);
+    let w = ((label_w + value_w + 3).max(title.len()).max(foot.len()) + 6) as u16;
+    let h = lines.len() as u16 + 6;
+    if area.width < w || area.height < h {
+        // too small for the box: the title line alone
+        question(buf, area, &format!("{title}  ·  {foot}"));
+        return;
+    }
+    let x = area.x + (area.width - w) / 2;
+    let y = area.y + (area.height - h) / 2;
+    let frame = Rect::new(x, y, w, h);
+    clear(buf, frame);
+    titled(buf, frame, title);
+    let bold = Style::default().bg(CHROME_BG).fg(TEXT).add_modifier(Modifier::BOLD);
+    for (i, (label, value)) in lines.iter().enumerate() {
+        let ly = y + 2 + i as u16;
+        put(buf, x + 3, ly, label, Style::default().bg(CHROME_BG).fg(DIM));
+        put(buf, x + 3 + label_w as u16 + 3, ly, value, bold);
+    }
+    let fx = x + (w - foot.chars().count() as u16) / 2;
+    put(buf, fx, y + h - 2, foot, Style::default().bg(CHROME_BG).fg(palette::rgb(palette::SIGNAL[1])));
 }

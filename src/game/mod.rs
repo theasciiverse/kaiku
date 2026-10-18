@@ -12,6 +12,7 @@ pub mod sector;
 pub mod ship;
 pub mod shot;
 pub mod spawn;
+pub mod stats;
 pub mod stars;
 pub mod typing;
 
@@ -27,6 +28,7 @@ use ship::{Hit, Ship};
 use shot::{Owner, Shot};
 use spawn::Spawner;
 use stars::Starfield;
+use stats::{Chain, Stats};
 use typing::{Key, Target, Typing};
 
 /// Fixed simulation step: 60 Hz, as in Entity.
@@ -100,6 +102,11 @@ pub struct Game {
     pub particles: Vec<Particle>,
     pub stars: Starfield,
     pub score: u32,
+    /// the best score ever, as loaded at start; `record` once this run beats it
+    pub best: u32,
+    pub record: bool,
+    pub chain: Chain,
+    pub stats: Stats,
     pub tick: u64,
     pub sector: Sector,
     pub typing: Typing,
@@ -140,6 +147,10 @@ impl Game {
             particles: Vec::new(),
             stars: Starfield::default(),
             score: 0,
+            best: 0,
+            record: false,
+            chain: Chain::default(),
+            stats: Stats::default(),
             tick: 0,
             sector,
             typing: Typing::default(),
@@ -162,9 +173,15 @@ impl Game {
     /// A fresh run in the same field.
     pub fn restart(&mut self) {
         let mut g = Game::new(self.rng.next_u64());
+        g.best = self.best.max(self.score);
         g.resize_dots(self.w, self.h);
         *self = g;
         log::info!("restart");
+    }
+
+    /// The run is over, one way or the other.
+    pub fn finished(&self) -> bool {
+        matches!(self.state, State::Over | State::Home)
     }
 
     /// Begins with the opening crawl instead of straight in the tunnel.
@@ -241,6 +258,10 @@ impl Game {
         }
         self.bomb_t += DT;
         self.powers.tick(DT);
+        self.chain.tick(DT);
+        if self.state == State::Flight {
+            self.stats.seconds += DT;
+        }
         for note in [&mut self.note, &mut self.power_note] {
             if let Some((_, t)) = note {
                 *t -= DT;
@@ -333,11 +354,18 @@ impl Game {
         }
         let mut targets: Vec<&mut dyn Target> =
             self.sector.echoes.iter_mut().map(|e| e as &mut dyn Target).chain(self.pods.iter_mut().map(|p| p as &mut dyn Target)).collect();
-        let Key::Done(id) = self.typing.key(c, &mut targets) else { return };
+        let key = self.typing.key(c, &mut targets);
+        self.stats.keys += 1;
+        if matches!(key, Key::Miss | Key::Stray) {
+            self.stats.misses += 1;
+        }
+        let Key::Done(id) = key else { return };
         if let Some(e) = self.sector.echo(id) {
             log::info!("decoded echo {id} truth={} {:?}", e.truth, e.text);
             self.score += 50 * e.text.len() as u32;
+            self.stats.echoes += 1;
         } else if let Some(i) = self.pods.iter().position(|p| p.id == id) {
+            self.stats.pods += 1;
             let pod = self.pods.remove(i);
             self.claim(pod);
         }
@@ -377,9 +405,11 @@ impl Game {
         }
         self.powers.bombs -= 1;
         self.bomb_t = 0.0;
-        for e in self.enemies.iter_mut().filter(|e| e.x < self.w) {
+        for e in self.enemies.iter_mut().filter(|e| e.x < self.w && e.hp > 0) {
             e.hp = 0;
-            self.score += e.kind.points();
+            let m = self.chain.link();
+            self.score += e.kind.points() * m;
+            self.stats.kills += 1;
             let (cx, cy) = e.aabb().center();
             fx::burst(&mut self.particles, cx, cy, 18, 55.0, Tint::Side(e.side), &mut self.rng);
         }
@@ -394,6 +424,10 @@ impl Game {
 
     fn set_state(&mut self, state: State) {
         log::info!("state {:?} -> {state:?}", self.state);
+        if matches!(state, State::Over | State::Home) && self.score > self.best {
+            self.best = self.score;
+            self.record = true;
+        }
         self.state = state;
         self.state_t = 0.0;
     }
@@ -406,6 +440,12 @@ impl Game {
         let (truth, blind) = (p.truth, self.sector.named(p).is_none());
         let from = self.route.at.1;
         self.route.jump(truth, &mut self.rng);
+        self.stats.sectors += 1;
+        if truth {
+            self.stats.true_jumps += 1;
+        } else {
+            self.stats.false_jumps += 1;
+        }
         let d = self.route.distance();
         let line = match (truth, blind) {
             (true, _) if d == 0 => "the echoes were true · home".to_string(),
@@ -508,7 +548,9 @@ impl Game {
                     let (cx, cy) = e.aabb().center();
                     fx::burst(&mut self.particles, cx, cy, 18, 50.0, Tint::Side(e.side), &mut self.rng);
                     if owner == Owner::Player {
-                        self.score += e.kind.points();
+                        let m = self.chain.link();
+                        self.score += e.kind.points() * m;
+                        self.stats.kills += 1;
                     }
                 } else {
                     fx::burst(&mut self.particles, s.x, s.y, 3, 30.0, Tint::Spark, &mut self.rng);
@@ -541,7 +583,11 @@ impl Game {
 
     fn ship_hit(&mut self, damage: f32) {
         let (cx, cy) = self.ship.center();
-        match self.ship.hit(damage) {
+        let hit = self.ship.hit(damage);
+        if hit.is_some() {
+            self.chain.snap();
+        }
+        match hit {
             None => {}
             Some(Hit::Shield) => fx::burst(&mut self.particles, cx, cy, 6, 35.0, Tint::Spark, &mut self.rng),
             Some(Hit::Life) => {
@@ -779,5 +825,33 @@ mod tests {
         g.update(&Controls::default());
         g.update(&Controls::default());
         assert!(g.sector.echoes.iter().all(|e| e.jam == 0.0));
+    }
+
+    #[test]
+    fn kills_chain_into_a_multiplier_and_a_hit_breaks_it() {
+        let mut g = game();
+        for i in 0..6 {
+            g.enemies.push(Enemy::scout(Side::Amber, 60.0 + i as f32 * 12.0, 30.0, 0.0, &mut Rng::new(1)));
+        }
+        let centres: Vec<_> = g.enemies.iter().map(|e| e.aabb().center()).collect();
+        for (x, y) in centres {
+            g.shots.push(Shot::new(x, y, 0.0, 0.0, Owner::Player));
+        }
+        g.collide();
+        assert_eq!(g.score, 4 * 100 + 2 * 200, "from the fifth kill on, double");
+        assert_eq!(g.stats.kills, 6);
+        g.ship.grace = 0.0;
+        g.ship_hit(ship::BULLET_DAMAGE);
+        assert_eq!(g.chain.count, 0);
+        assert_eq!(g.chain.best, 6);
+    }
+
+    #[test]
+    fn a_new_best_is_recorded_at_the_end() {
+        let mut g = game();
+        g.best = 100;
+        g.score = 250;
+        g.set_state(State::Over);
+        assert!(g.record && g.best == 250 && g.finished());
     }
 }

@@ -41,7 +41,15 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     chrome::border(buf, l.frame);
     panel::receiver(buf, l.receiver, game);
     panel::powerups(buf, l.powerups, &game.powers.owned(), game.tick);
-    chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.powers.bombs, game.score, input.mode_note());
+    let hud = chrome::Hud {
+        shield: game.ship.shield,
+        lives: game.ship.lives,
+        bombs: game.powers.bombs,
+        score: game.score,
+        multiplier: game.chain.multiplier(),
+        note: input.mode_note(),
+    };
+    chrome::hud(buf, l.hud, &hud);
 
     let mut canvas = Canvas::new(play.width, play.height);
     let bg = palette::tunnel(game.sector.number);
@@ -65,13 +73,9 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
 
     if !input.confirm_quit {
         match game.state {
-            State::Over => chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score)),
-            // let Earth rise a while before the words
-            State::Home if game.state_t > 4.0 => {
-                // left of Earth, not over it
-                let left = Rect { width: play.width * 3 / 5, ..play };
-                chrome::question(buf, left, &format!("HOME  ·  score {}  ·  enter to fly again", game.score))
-            }
+            State::Over => summary(buf, play, game, "signal lost"),
+            // let Earth rise a while before the words, and keep them off it
+            State::Home if game.state_t > 4.0 => summary(buf, Rect { width: play.width * 3 / 5, ..play }, game, "home"),
             _ => {}
         }
     }
@@ -152,6 +156,23 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
             echoes::portal_label(buf, play, p, &game.sector, game.tick);
         }
     }
+}
+
+/// The end of a run: how it went.
+fn summary(buf: &mut ratatui::buffer::Buffer, area: Rect, game: &Game, title: &str) {
+    let s = &game.stats;
+    let best = if game.record { format!("{:07}  new best", game.best) } else { format!("{:07}", game.best) };
+    let time = format!("{}:{:02}", s.seconds as u32 / 60, s.seconds as u32 % 60);
+    let lines = [
+        ("score".to_string(), format!("{:07}", game.score)),
+        ("best".to_string(), best),
+        ("sectors".to_string(), format!("{}  ·  {} true, {} detours", s.sectors, s.true_jumps, s.false_jumps)),
+        ("kills".to_string(), format!("{}  ·  best chain {}", s.kills, game.chain.best)),
+        ("decoded".to_string(), format!("{} echoes  ·  {} pods", s.echoes, s.pods)),
+        ("typing".to_string(), format!("{}% of {} keys", s.accuracy(), s.keys)),
+        ("time".to_string(), time),
+    ];
+    chrome::summary(buf, area, title, &lines, "enter: fly again");
 }
 
 /// A jammer's interference: Braille rings pulsing out from its dish.
@@ -290,7 +311,7 @@ mod tests {
         game.state_t = 5.0;
         let text = frame(&game, 100, 30);
         assert!(text.contains("hello from the children of planet earth"));
-        assert!(text.contains("HOME  ·  score"));
+        assert!(text.contains("HOME") && text.contains("enter: fly again"));
     }
 
     #[test]
