@@ -75,8 +75,11 @@ Each milestone ends playable and committed.
    power-up effects.
 6. **M5 — Intro:** the Metroid-style opening story crawl, then the
    receiver repair tutorial.
-7. **Later:** the cockpit scene needs more work (noted 2026-10-18).
-8. **Then:** playtest. The open question is whether the mix of flying,
+7. **Built overnight (2026-10-18):** five more enemies, waves growing by
+   sector, gate guards, tunnel walls, kill chains, run stats, high score,
+   extra lives, shield recharge, start flags. See `docs/night-log.md`.
+8. **Later:** the cockpit scene needs more work (noted 2026-10-18).
+9. **Then:** playtest. The open question is whether the mix of flying,
    shooting and typing is fun.
 
 ## Tests

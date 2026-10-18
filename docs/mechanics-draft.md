@@ -111,20 +111,42 @@ Enemy fleets don't carry words; only **power-ups** and **echoes** do.
 - **Ship:** moves freely in the field, with a small hitbox (visibly smaller
   than the sprite).
 - **Fire:** Space fires the main gun forward. Power-ups upgrade it.
-- **Getting hit:** a shield bar absorbs hits. When it's empty the next hit
-  costs a life. You start with 3 lives *(default)* and respawn in place,
-  with brief invulnerability.
+- **Getting hit:** a shield bar absorbs hits (a bullet takes a quarter, a
+  ram or a beam half, a wall scrape a tenth). When it's empty the next hit
+  costs a life. You start with 3 lives and respawn in place, with brief
+  invulnerability. The shield recharges at every jump *(default)*. Extra
+  lives come at 30,000 points and every 60,000 after, up to 5 *(default)*.
+- **Scoring:** kills in quick succession (within 2.5 s) build a chain;
+  every five links add one to the multiplier, up to ×8. Any hit breaks it.
+- **The war:** two sides, Amber and Jade (working names), each with its own
+  colours. Ships fire at the player or at the other side; a side never hurts
+  its own. Enemy fire has one red and nothing else uses it, and it is drawn
+  over everything, words included.
 - **Enemies:**
-  - The two warring sides, each with its own colour and look.
-  - Formations fly in, telegraphed.
-  - Enemy bullets have one colour and glyph that nothing else uses.
-  - Some ships fight each other, so you can sometimes let the war do your
-    work.
-- **Power-ups** *(defaults)*: spread shot, rapid fire, a shield refill, a
-  smart-bomb charge, an escort drone (one of each type, Zendocon-style),
-  and slow time.
+
+  | Ship | From sector | What it does |
+  |---|---|---|
+  | Scout | 1 | snaking lines, occasional shots |
+  | Gunship | 1 | holds on the right and fires aimed shots |
+  | Interceptor | 1 | lines up on your row, flashing (the tell), then dashes |
+  | Mine | 2 | drifts with the tunnel; destroyed by anyone, bursts into eight shards |
+  | Lancer | 2 | a dotted warning line along its row, then a beam |
+  | Jammer | 2 | never fires; while it's on screen every echo garbles more; shoot it down |
+  | Carrier | 3 | capital ship: crosses slowly, fires fans, launches scouts |
+
+  Every third sector a carrier **guards the gates** as they open.
+  Each sector runs a little faster than the last.
+- **Tunnel walls:** from sector 2 the tunnel has walls of rock, ice or the
+  war's wreckage, at most a cell and a half deep. Scraping one costs a
+  little shield and pushes you off.
+- **Power-ups:** spread shot, rapid fire, a shield refill, smart bombs
+  (Enter; up to three), an escort drone, and slow time. Losing a life costs
+  only the newest weapon power-up.
 - **End-of-sector docking** *(later)*: a portal approach that re-arms you if
   you hit it cleanly.
+- **End of a run:** a summary of score and best, sectors and detours, kills
+  and best chain, echoes and pods decoded, typing accuracy, and time. The
+  best score is kept between runs.
 
 ## The route home
 
