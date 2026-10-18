@@ -3,7 +3,7 @@
 
 use super::canvas::Canvas;
 use super::chrome;
-use super::palette::{self, CHROME_BG, DIM, HATCH};
+use super::palette::{self, CHROME_BG, DIM, TRACE};
 use super::sprites;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -32,10 +32,10 @@ pub fn receiver(buf: &mut Buffer, area: Rect, tick: u64) {
         let n = noise(cx, tick);
         let ch = if n.is_multiple_of(3) { char::from_u32(0x2800 + (n >> 8) % 256).unwrap_or(' ') } else { ' ' };
         let t = (cx - x) as f32 / (end - x).max(1) as f32;
-        let fg = palette::ramp(&[(110, 104, 150), (58, 46, 104)], t);
+        let fg = palette::ramp(&[(100, 128, 148), (30, 64, 74)], t);
         chrome::text(buf, cx, inner.y, &ch.to_string(), Style::default().fg(fg));
     }
-    chrome::text(buf, inner.x + 1, inner.y + 1, "··· listening ···", Style::default().fg(HATCH));
+    chrome::text(buf, inner.x + 1, inner.y + 1, "··· listening ···", Style::default().fg(TRACE));
 }
 
 /// The power-up box: every power-up's illustration, dim unless the ship has it.

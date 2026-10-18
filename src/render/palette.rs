@@ -4,15 +4,16 @@ use ratatui::style::Color;
 
 pub type Rgb = (u8, u8, u8);
 
-pub const SPACE: Color = Color::Rgb(8, 9, 22);
-pub const CHROME_BG_RGB: Rgb = (14, 13, 30);
+pub const SPACE: Color = Color::Rgb(6, 10, 18);
+pub const CHROME_BG_RGB: Rgb = (10, 16, 26);
 pub const CHROME_BG: Color = Color::Rgb(CHROME_BG_RGB.0, CHROME_BG_RGB.1, CHROME_BG_RGB.2);
-pub const HATCH: Color = Color::Rgb(58, 46, 104);
-pub const DIM: Color = Color::Rgb(110, 104, 150);
-pub const TEXT: Color = Color::Rgb(214, 210, 240);
+/// The receiver's quiet trace: waveform, empty meter segments.
+pub const TRACE: Color = Color::Rgb(30, 64, 74);
+pub const DIM: Color = Color::Rgb(100, 128, 148);
+pub const TEXT: Color = Color::Rgb(214, 230, 240);
 
-/// The wordmark and border ramp: echo pink to signal violet to deep blue.
-pub const RAMP: [Rgb; 3] = [(255, 96, 168), (154, 102, 255), (72, 140, 255)];
+/// The receiver ramp, the chrome's own colours: deep teal to signal cyan to ice.
+pub const SIGNAL: [Rgb; 3] = [(22, 120, 122), (60, 210, 200), (190, 236, 255)];
 
 pub const STAR: [Color; 3] = [Color::Rgb(70, 74, 110), Color::Rgb(130, 136, 180), Color::Rgb(220, 224, 255)];
 pub const SHOT: Color = Color::Rgb(255, 226, 120);

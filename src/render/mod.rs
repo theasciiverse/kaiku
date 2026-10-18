@@ -34,7 +34,8 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         buf.set_string(area.x, area.y, "Kaiku needs a bigger terminal", Style::default().fg(palette::TEXT));
         return;
     }
-    chrome::header(buf, l.header, game.tick);
+    // no receiver signal yet: echoes arrive in M2
+    chrome::header(buf, l.header, game.tick, 0.0);
     chrome::border(buf, l.frame);
     panel::receiver(buf, l.receiver, game.tick);
     panel::powerups(buf, l.powerups, &[], game.tick);
@@ -115,9 +116,9 @@ mod tests {
         if std::env::var("KAIKU_PRINT").is_ok() {
             println!("{text}");
         }
-        assert!(text.contains("K A I K U"));
+        assert!(text.contains("KAIKU kaiku kaiku kaiku"), "the name and its echoes");
         assert!(text.contains('╭') && text.contains("SHIELD"));
-        assert!(text.contains("receiver") && text.contains("power-ups"), "the bottom panel");
+        assert!(text.contains("RECEIVER") && text.contains("POWER-UPS"), "the bottom panel");
         assert!(text.contains('▀') || text.contains('▄'), "the ship is half-blocks");
         assert!(text.chars().any(|c| ('\u{2801}'..='\u{28FF}').contains(&c)), "stars and shots are Braille");
     }

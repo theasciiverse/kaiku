@@ -1,12 +1,15 @@
-//! The frame around the play area, after Charm's Crush TUI (ideas only): a
-//! gradient wordmark, `╱` hatch fields, rounded gradient borders and a HUD line.
+//! The frame around the play area. Its look is a receiver listening for echoes:
+//! the name echoing in the header over a Braille waveform, rounded borders in
+//! the signal ramp, signal meters in the titles, a HUD line.
 
-use super::palette::{self, CHROME_BG, DIM, HATCH, RAMP, TEXT};
+use super::palette::{self, CHROME_BG, DIM, TEXT, TRACE};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 
-pub const WORDMARK: &str = "K A I K U";
+pub const WORDMARK: &str = "KAIKU";
+/// The name's echoes in the header, quieter each time.
+pub const ECHO: &str = "kaiku";
 pub const SUBTITLE: &str = "echoes home";
 
 /// Rows of the bottom panel, borders included: two lines of content.
@@ -51,39 +54,55 @@ fn put(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) -> u16 {
     cx
 }
 
-/// Header: `╱╱╱ K A I K U ╱╱╱╱ echoes home ╱╱╱…`, the wordmark in the ramp.
-pub fn header(buf: &mut Buffer, area: Rect, tick: u64) {
+/// Header: the name and its echoes, `KAIKU kaiku kaiku kaiku`, each fainter,
+/// over a Braille waveform: the receiver's trace. `signal` (0..1) is the
+/// strength of what the receiver hears; it sets the waveform's amplitude.
+pub fn header(buf: &mut Buffer, area: Rect, tick: u64, signal: f32) {
     let bg = Style::default().bg(CHROME_BG);
-    for x in area.left()..area.right() {
-        if let Some(cell) = buf.cell_mut((x, area.y)) {
-            cell.set_char('╱').set_style(bg.fg(HATCH));
-        }
-    }
-    let mut x = area.x + 3;
-    x = put(buf, x, area.y, " ", bg);
-    let n = WORDMARK.chars().count().max(2) - 1;
-    // a slow shimmer runs along the wordmark
-    let phase = (tick % 240) as f32 / 240.0;
+    wave(buf, area, tick, signal);
+    let mut x = put(buf, area.x + 1, area.y, " ", bg);
+    // a slow glint runs along the name
+    let glint = (tick / 6 % 40) as usize;
     for (i, ch) in WORDMARK.chars().enumerate() {
-        let t = i as f32 / n as f32;
-        let shimmer = ((t - phase).abs() < 0.12) as u8 as f32 * 0.25;
-        let style = bg.fg(palette::ramp(&RAMP, t * (1.0 - shimmer))).add_modifier(Modifier::BOLD);
-        x = put(buf, x, area.y, &ch.to_string(), style);
+        let fg = if i == glint { palette::rgb(palette::SIGNAL[2]) } else { palette::ramp(&palette::SIGNAL, 0.55 + i as f32 * 0.08) };
+        x = put(buf, x, area.y, &ch.to_string(), bg.fg(fg).add_modifier(Modifier::BOLD));
     }
-    x = put(buf, x, area.y, " ", bg);
-    x = put(buf, x + 4, area.y, " ", bg);
-    x = put(buf, x, area.y, SUBTITLE, bg.fg(DIM).add_modifier(Modifier::ITALIC));
+    for (k, fade) in [0.55, 0.32, 0.16].into_iter().enumerate() {
+        x = put(buf, x, area.y, " ", bg);
+        let fg = palette::rgb(palette::lerp(palette::CHROME_BG_RGB, palette::SIGNAL[1], fade));
+        let style = if k == 0 { bg.fg(fg).add_modifier(Modifier::BOLD) } else { bg.fg(fg) };
+        x = put(buf, x, area.y, ECHO, style);
+    }
     put(buf, x, area.y, " ", bg);
+    let sub = format!(" {SUBTITLE} ");
+    let sx = area.right().saturating_sub(sub.chars().count() as u16 + 2);
+    put(buf, sx, area.y, &sub, bg.fg(DIM).add_modifier(Modifier::ITALIC));
 }
 
-/// Rounded border whose colour runs along the ramp from left to right.
+/// One row of Braille waveform across `area`.
+fn wave(buf: &mut Buffer, area: Rect, tick: u64, signal: f32) {
+    let amp = 0.35 + signal.clamp(0.0, 1.0) * 1.6;
+    for cx in area.left()..area.right() {
+        let mut bits = 0u32;
+        for sub in 0..2u16 {
+            let t = (cx * 2 + sub) as f32 * 0.31 - tick as f32 * 0.07;
+            // a carrier plus a slower swell; with no signal it is a low hum
+            let v = (t.sin() * 0.7 + (t * 0.23).sin() * 0.3) * amp;
+            let row = (1.5 + v).round().clamp(0.0, 3.0) as usize;
+            bits |= [[0x01, 0x02, 0x04, 0x40], [0x08, 0x10, 0x20, 0x80]][sub as usize][row];
+        }
+        let ch = char::from_u32(0x2800 + bits).unwrap_or(' ');
+        put(buf, cx, area.y, &ch.to_string(), Style::default().fg(TRACE).bg(CHROME_BG));
+    }
+}
+
+/// Rounded border whose colour runs along the signal ramp from left to right.
 pub fn border(buf: &mut Buffer, frame: Rect) {
     if frame.width < 2 || frame.height < 2 {
         return;
     }
     let w = (frame.width - 1).max(1) as f32;
-    let color = |x: u16| palette::ramp(&RAMP, (x - frame.x) as f32 / w);
-    let style = |x: u16| Style::default().fg(color(x)).bg(CHROME_BG);
+    let style = |x: u16| Style::default().fg(palette::ramp(&palette::SIGNAL, (x - frame.x) as f32 / w)).bg(CHROME_BG);
     let (l, r, t, b) = (frame.left(), frame.right() - 1, frame.top(), frame.bottom() - 1);
     for x in l..=r {
         let (top, bottom) = match x {
@@ -100,15 +119,18 @@ pub fn border(buf: &mut Buffer, frame: Rect) {
     }
 }
 
-/// A border with a title in its top edge, Crush-style: ` title ╱╱╱`.
+/// A border with a title in its top edge: `╭─ RECEIVER ▂▄▆ ───`.
 pub fn titled(buf: &mut Buffer, frame: Rect, title: &str) {
     border(buf, frame);
-    if frame.width < title.chars().count() as u16 + 10 {
+    if frame.width < title.chars().count() as u16 + 12 {
         return;
     }
     let bg = Style::default().bg(CHROME_BG);
-    let x = put(buf, frame.x + 2, frame.y, &format!(" {title} "), bg.fg(TEXT).add_modifier(Modifier::BOLD));
-    let x = put(buf, x, frame.y, "╱╱╱", bg.fg(HATCH));
+    let x = put(buf, frame.x + 2, frame.y, &format!(" {} ", title.to_uppercase()), bg.fg(TEXT).add_modifier(Modifier::BOLD));
+    let mut x = x;
+    for (i, ch) in "▂▄▆".chars().enumerate() {
+        x = put(buf, x, frame.y, &ch.to_string(), bg.fg(palette::ramp(&palette::SIGNAL, 0.3 + i as f32 * 0.3)));
+    }
     put(buf, x, frame.y, " ", bg);
 }
 
@@ -135,12 +157,12 @@ pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, score: u32, not
     let segments = 10;
     let lit = (shield.clamp(0.0, 1.0) * segments as f32).round() as usize;
     for i in 0..segments {
-        let fg = if i < lit { palette::ramp(&[(90, 200, 255), (154, 102, 255)], i as f32 / 9.0) } else { HATCH };
+        let fg = if i < lit { palette::ramp(&palette::SIGNAL[1..], i as f32 / 9.0) } else { TRACE };
         x = put(buf, x, area.y, if i < lit { "▰" } else { "▱" }, bg.fg(fg));
     }
     x = put(buf, x + 3, area.y, "LIVES ", bg.fg(DIM));
     for _ in 0..lives {
-        x = put(buf, x, area.y, "◆ ", bg.fg(Color::Rgb(255, 96, 168)));
+        x = put(buf, x, area.y, "▶ ", bg.fg(palette::rgb(palette::SIGNAL[2])));
     }
     x = put(buf, x + 2, area.y, "SCORE ", bg.fg(DIM));
     put(buf, x, area.y, &format!("{score:07}"), bg.fg(TEXT).add_modifier(Modifier::BOLD));
