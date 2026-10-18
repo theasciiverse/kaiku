@@ -155,6 +155,34 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         for p in &game.sector.portals {
             echoes::portal_label(buf, play, p, &game.sector, game.tick);
         }
+        fire_on_top(buf, play, bg, game);
+    }
+}
+
+/// Enemy fire and live beams once more, over any text: words must never hide
+/// what can hurt you.
+fn fire_on_top(buf: &mut ratatui::buffer::Buffer, play: Rect, bg: ratatui::style::Color, game: &Game) {
+    let mut half = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= play.width as i32 || y >= play.height as i32 * 2 {
+            return;
+        }
+        if let Some(cell) = buf.cell_mut((play.x + x as u16, play.y + (y / 2) as u16)) {
+            // over text the other half goes back to the tunnel; over pixels it keeps theirs
+            let glyph = if y % 2 == 0 { '▀' } else { '▄' };
+            if cell.symbol() != "▀" && cell.symbol() != "▄" && cell.symbol() != " " {
+                cell.set_bg(bg);
+            }
+            cell.set_char(glyph).set_fg(palette::ENEMY_SHOT);
+        }
+    };
+    let px = |v: f32| (v / 2.0).round() as i32;
+    for s in game.shots.iter().filter(|s| s.owner != Owner::Player) {
+        half(px(s.x - 1.0), px(s.y - 1.0));
+    }
+    for b in game.enemies.iter().filter(|e| e.hp > 0).filter_map(|e| e.beam()).filter(|b| b.live) {
+        for x in 0..px(b.x_end) {
+            half(x, px(b.y - 1.0));
+        }
     }
 }
 
@@ -400,5 +428,28 @@ mod tests {
         }
         let text = frame(&game, 120, 34);
         assert!(text.matches('▀').count() + text.matches('▄').count() > 60);
+    }
+
+    #[test]
+    fn enemy_fire_shows_through_echo_text() {
+        use crate::game::shot::Shot;
+        let mut game = Game::new(4);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        for _ in 0..60 * 13 {
+            game.update(&Controls::default());
+            game.ship.grace = 1.0;
+        }
+        game.shots.clear();
+        let e = &game.sector.echoes[0];
+        // a bullet right on the echo's third letter
+        let (x, y) = (e.x + 5.0, e.y + 1.0);
+        game.shots.push(Shot::new(x, y, 0.0, 0.0, Owner::Enemy(crate::game::enemy::Side::Amber)));
+        let mut term = Terminal::new(TestBackend::new(100, 30)).unwrap();
+        let input = Input::with_mode(Mode::Timing);
+        term.draw(|f| draw(f, &game, &input)).unwrap();
+        let buf = term.backend().buffer();
+        let cell = &buf[(play.x + ((x - 1.0) / 2.0).round() as u16, play.y + (((y - 1.0) / 2.0).round() as u16) / 2)];
+        assert_eq!(cell.fg, palette::ENEMY_SHOT, "the bullet, not the letter");
     }
 }
