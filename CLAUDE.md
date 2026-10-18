@@ -22,7 +22,7 @@ zones, combo upgrades and specials provide the shmup structure.
 
 The goal is that the game is fun, challenging and educational, and that it
 uses the full width and breadth of the keyboard: every finger, the number
-row, punctuation, accents. Each faction's vocabulary is a small,
+row, punctuation. Each faction's vocabulary is a small,
 spaced-repetition pool of real words, not a random word list, so you pick up
 vocabulary in the languages you fight.
 
@@ -109,23 +109,23 @@ any time.
 ### 4.2 Data format
 Hordes are data files, addable without recompiling: one TOML file per horde.
 Each entry keeps the **display** separate from the **answer**, as k-type
-does. That one schema covers romaji mode, accents, glosses and retrieval
+does. That one schema covers romaji mode, glosses and retrieval
 drills:
 
 ```toml
 [[word]]
-display = "Schmetterling"   # what flies at you
-answer  = "schmetterling"   # what you type (NFC); romaji for kana
-alt     = []                # extra accepted answers
-gloss   = "butterfly"
+display = "Grüße"           # what flies at you, spelled correctly
+gloss   = "greetings"
 freq    = 2140              # frequency rank, drives pool weighting
-tags    = ["noun", "animal"]
+tags    = ["noun"]
+# answer = "..."            # optional; defaults to the display folded to ASCII
 ```
 
-All text is normalised to NFC and compared by `char`; case is folded with
-Unicode rules. **Lenient accents** is the default: `e` is accepted for é and
-`ss` for ß, and German `ae/oe/ue` optionally, for a smaller payload.
-**Strict** pays full and turns accents, ß and capitals into bonus damage.
+**You only ever type plain a–z.** Nobody has time for accents in a shmup.
+The display keeps the real spelling, so you still see it; the answer is the
+display folded to lowercase ASCII: diacritics stripped, `ß`→`ss`, `æ`→`ae`,
+`ø`→`o`. So `Grüße` is typed `grusse` and `été` is typed `ete`. Set `answer`
+only when the fold is wrong or for romaji (`display = "わ"`, `answer = "wa"`).
 
 ### 4.3 Bosses and grammar
 Boss phases require a real grammatical unit, not just a longer word: a
@@ -236,7 +236,7 @@ start-up when exact input isn't available.
 
 | Keys | Action |
 |---|---|
-| Letters (incl. accents, AltGr, dead keys) | Typing: lock and fire |
+| Letters a–z | Typing: lock and fire |
 | Arrows, Ctrl+h/j/k/l | Move |
 | Backspace / Esc | Drop lock |
 | Enter | EMP |
@@ -248,13 +248,7 @@ What is new for Kaiku, because no other Asciiverse game mixes held movement
 with typed text:
 - **Typing accepts `KeyEventKind::Press` only.** Windows reports releases
   natively, so without this filter every letter would register twice.
-- **Kitty flags against composed text:** Entity pushes flag 8
-  (`REPORT_ALL_KEYS_AS_ESCAPE_CODES`). Per the kitty spec, that stops the
-  terminal sending composed text (dead-key é, AltGr, IME), and crossterm
-  doesn't support flag 16. Kaiku probably needs flags 1|2 only: arrows
-  still report releases, and letters don't need them. **Test this in kitty,
-  foot, WezTerm and ghostty with German and French layouts before building
-  on it.**
+- Typing is plain a–z (§4.2), so Entity's kitty flags work unchanged.
 - **Ctrl+H is Backspace and Ctrl+J is line feed** in legacy terminals.
   Kitty's disambiguate flag separates them. Without kitty, check what
   crossterm decodes in raw mode, and fall back (Alt+hjkl, or erase via
@@ -328,7 +322,6 @@ not start until Phase 1 is fun as a single-horde loop.
   lock worth keeping as an option?
 - **Pool size vs. the unique-first-letter rule:** with 15–20 words, how many
   can be live at once? Check this against real word lists.
-- **Kitty flags and dead keys:** §7, needs a real test.
 - **Ctrl+H/J on legacy terminals:** §7.
 - **Combo tiers, Signal drain and refill, and spawn rates:** tune by
   playtest, not at spec time.
