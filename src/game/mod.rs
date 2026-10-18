@@ -450,7 +450,9 @@ impl Game {
 
     /// How near home, 0 (where the surge left you) to 1.
     pub fn closeness(&self) -> f32 {
-        1.0 - self.route.distance() as f32 / route::START_DISTANCE as f32
+        // detours take you further out than the surge did: still 0, never less,
+        // or the true echo would read fainter than the fakes
+        (1.0 - self.route.distance() as f32 / route::START_DISTANCE as f32).clamp(0.0, 1.0)
     }
 
     fn set_state(&mut self, state: State) {
@@ -1051,5 +1053,19 @@ mod tests {
         g.scrape_walls();
         assert!(g.ship.shield < 1.0);
         assert!(g.ship.aabb().y0 >= g.terrain.depth(g.ship.aabb().x0).0 - 0.01);
+    }
+
+    #[test]
+    fn far_out_on_a_detour_the_true_echo_is_still_the_clearest() {
+        let mut g = game();
+        g.route.at = (route::MAX_DISTANCE, 0);
+        assert_eq!(g.closeness(), 0.0);
+        let mut rng = Rng::new(5);
+        let mut s = Sector::new(4, g.closeness(), &mut rng);
+        for _ in 0..60 * 40 {
+            s.update(DT, 160.0, 72.0, &mut rng);
+        }
+        let truth = s.echoes.iter().find(|e| e.truth).unwrap().clarity;
+        assert!(s.echoes.iter().filter(|e| !e.truth).all(|e| e.clarity < truth));
     }
 }
