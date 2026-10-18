@@ -40,6 +40,10 @@ const WAR_FIRE: f32 = 0.5;
 /// How much a jammer on screen takes off every echo's clarity.
 const JAM: f32 = 0.3;
 const MINE_SHRAPNEL: usize = 8;
+/// Extra lives: at this score, then every so many points more.
+const EXTEND_FIRST: u32 = 30_000;
+const EXTEND_EVERY: u32 = 60_000;
+const MAX_LIVES: u8 = 5;
 /// Every this many sectors a carrier guards the gates.
 const GUARD_EVERY: u32 = 3;
 /// A lancer's beam takes this much shield.
@@ -109,6 +113,8 @@ pub struct Game {
     pub record: bool,
     pub chain: Chain,
     pub stats: Stats,
+    /// the score at which the next extra life comes
+    next_extend: u32,
     pub tick: u64,
     pub sector: Sector,
     pub typing: Typing,
@@ -153,6 +159,7 @@ impl Game {
             record: false,
             chain: Chain::default(),
             stats: Stats::default(),
+            next_extend: EXTEND_FIRST,
             tick: 0,
             sector,
             typing: Typing::default(),
@@ -344,6 +351,7 @@ impl Game {
         }
         self.enemies.retain(|e| e.hp > 0 && !e.gone());
         fx::update(&mut self.particles, DT);
+        self.extends();
         if self.tick.is_multiple_of(30) {
             log::trace!("tick {} enemies {} shots {} shield {} lives {}", self.tick, self.enemies.len(), self.shots.len(), self.ship.shield, self.ship.lives);
         }
@@ -481,8 +489,23 @@ impl Game {
         self.spawner = Spawner::default();
         self.pods_spawner = PodSpawner::default();
         self.ship.x = 8.0;
+        // through the gate the shield recharges, as docking re-arms in Zendocon
+        self.ship.shield = 1.0;
         self.note = None;
         self.set_state(State::Flight);
+    }
+
+    /// Extra lives at score milestones: the first at `EXTEND_FIRST`, then every
+    /// `EXTEND_EVERY`, up to `MAX_LIVES`.
+    fn extends(&mut self) {
+        while self.score >= self.next_extend {
+            self.next_extend += EXTEND_EVERY;
+            if self.ship.lives < MAX_LIVES {
+                self.ship.lives += 1;
+                self.power_note = Some(("+ extra life".to_string(), 2.5));
+                log::info!("extra life at {}", self.score);
+            }
+        }
     }
 
     /// Ship `i` fires: at the nearest ship of the other side half the time, if
@@ -946,5 +969,26 @@ mod tests {
             let guard = g.enemies.iter().any(|e| e.kind == Kind::Carrier && e.x > g.w * 0.4);
             assert_eq!(guard, guarded, "sector {number}");
         }
+    }
+
+    #[test]
+    fn extra_lives_come_at_milestones_up_to_five() {
+        let mut g = game();
+        g.score = EXTEND_FIRST;
+        g.update(&Controls::default());
+        assert_eq!(g.ship.lives, 4);
+        g.score = EXTEND_FIRST + 3 * EXTEND_EVERY;
+        g.update(&Controls::default());
+        assert_eq!(g.ship.lives, MAX_LIVES);
+        assert_eq!(g.next_extend, EXTEND_FIRST + 4 * EXTEND_EVERY, "milestones pass even at the cap");
+    }
+
+    #[test]
+    fn the_shield_recharges_through_the_gate() {
+        let mut g = game();
+        g.ship.shield = 0.25;
+        g.state = State::Map;
+        g.fly_on();
+        assert_eq!(g.ship.shield, 1.0);
     }
 }
