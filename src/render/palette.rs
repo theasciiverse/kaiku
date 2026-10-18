@@ -5,6 +5,12 @@ use ratatui::style::Color;
 pub type Rgb = (u8, u8, u8);
 
 pub const SPACE: Color = Color::Rgb(6, 10, 18);
+
+/// Each tunnel has its own darkness, so a new sector looks like a new place.
+pub fn tunnel(sector: u32) -> Color {
+    const DARK: [Color; 5] = [SPACE, Color::Rgb(14, 8, 22), Color::Rgb(4, 16, 18), Color::Rgb(16, 12, 6), Color::Rgb(6, 8, 26)];
+    DARK[(sector.saturating_sub(1) as usize) % DARK.len()]
+}
 pub const CHROME_BG_RGB: Rgb = (10, 16, 26);
 pub const CHROME_BG: Color = Color::Rgb(CHROME_BG_RGB.0, CHROME_BG_RGB.1, CHROME_BG_RGB.2);
 /// The receiver's quiet trace: waveform, empty meter segments.

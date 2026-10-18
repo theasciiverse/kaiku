@@ -4,6 +4,7 @@ pub mod echo;
 pub mod enemy;
 pub mod fx;
 pub mod rng;
+pub mod route;
 pub mod sector;
 pub mod ship;
 pub mod shot;
@@ -15,6 +16,7 @@ use crate::input::Controls;
 use enemy::Enemy;
 use fx::{Particle, Tint};
 use rng::Rng;
+use route::Route;
 use sector::{Phase, Sector};
 use ship::{Hit, Ship};
 use shot::{Owner, Shot};
@@ -28,8 +30,8 @@ const SHOT_SPEED: f32 = 260.0;
 const ENEMY_SHOT_SPEED: f32 = 70.0;
 /// Chance that a ship fires at the other side rather than at the player.
 const WAR_FIRE: f32 = 0.5;
-/// Jumps between the surge and home along the shortest route.
-pub const START_DISTANCE: u32 = 6;
+/// Seconds the field takes to swing round after a portal.
+pub const TURN_TIME: f32 = 1.6;
 /// How long a receiver note stays up, in seconds.
 const NOTE_TIME: f32 = 6.0;
 
@@ -63,6 +65,10 @@ impl Aabb {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum State {
     Flight,
+    /// through a portal: the field swings round to the new heading
+    Turn,
+    /// between sectors: the route map, until Enter
+    Map,
     /// out of lives: the war goes on without you
     Over,
     /// arrived
@@ -83,8 +89,11 @@ pub struct Game {
     pub tick: u64,
     pub sector: Sector,
     pub typing: Typing,
-    /// jumps left to home
-    pub distance: u32,
+    pub route: Route,
+    /// seconds spent in the current state (Turn, Map, Home)
+    pub state_t: f32,
+    /// which way the field swings at a turn: -1 or 1
+    pub turn_dir: f32,
     /// a line for the receiver (jump results), and seconds it has left
     pub note: Option<(String, f32)>,
     spawner: Spawner,
@@ -95,6 +104,7 @@ impl Game {
     pub fn new(seed: u64) -> Game {
         let mut rng = Rng::new(seed);
         let sector = Sector::new(1, 0.0, &mut rng);
+        let route = Route::new(&mut rng);
         Game {
             w: 0.0,
             h: 0.0,
@@ -108,7 +118,9 @@ impl Game {
             tick: 0,
             sector,
             typing: Typing::default(),
-            distance: START_DISTANCE,
+            route,
+            state_t: 0.0,
+            turn_dir: 1.0,
             note: None,
             spawner: Spawner::default(),
             rng,
@@ -145,12 +157,18 @@ impl Game {
 
     pub fn update(&mut self, c: &Controls) {
         self.tick += 1;
-        self.stars.update(DT, 1.0, self.w, self.h, &mut self.rng);
+        self.state_t += DT;
+        // through a portal the stars streak past
+        let warp = if self.state == State::Turn { 6.0 } else { 1.0 };
+        self.stars.update(DT, warp, self.w, self.h, &mut self.rng);
+        if self.state == State::Turn && self.state_t >= TURN_TIME {
+            self.set_state(if self.route.distance() == 0 { State::Home } else { State::Map });
+        }
         if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h) {
             let (x, y) = self.ship.nose();
             self.shots.push(Shot::new(x, y, SHOT_SPEED, 0.0, Owner::Player));
         }
-        if self.sector.phase == Phase::Flight {
+        if self.state == State::Flight && self.sector.phase == Phase::Flight {
             self.spawner.update(DT, self.w, self.h, &mut self.rng, &mut self.enemies);
         }
         if self.state == State::Flight {
@@ -196,36 +214,52 @@ impl Game {
 
     /// How near home, 0 (where the surge left you) to 1.
     pub fn closeness(&self) -> f32 {
-        1.0 - self.distance as f32 / START_DISTANCE as f32
+        1.0 - self.route.distance() as f32 / route::START_DISTANCE as f32
+    }
+
+    fn set_state(&mut self, state: State) {
+        log::info!("state {:?} -> {state:?}", self.state);
+        self.state = state;
+        self.state_t = 0.0;
     }
 
     /// The jump: a true portal brings home one step closer, a false one adds a
-    /// detour. Then the next sector begins.
+    /// detour. The field swings round, then the map shows where you are.
     fn enter_portal(&mut self) {
         let ship = self.ship.aabb();
         let Some(p) = self.sector.portals.iter().find(|p| p.aabb().overlaps(&ship)) else { return };
-        let truth = p.truth;
-        let blind = p.echo.is_none();
-        self.distance = if truth { self.distance.saturating_sub(1) } else { self.distance + 1 };
+        let (truth, blind) = (p.truth, p.echo.is_none());
+        let from = self.route.at.1;
+        self.route.jump(truth, &mut self.rng);
+        let d = self.route.distance();
         let line = match (truth, blind) {
-            (true, _) if self.distance == 0 => "the echoes were true: home".to_string(),
-            (true, false) => format!("true echo · closer to home · {} jumps left", self.distance),
-            (true, true) => format!("a lucky blind jump · {} jumps left", self.distance),
-            (false, false) => format!("the echo was jammed · a detour · {} jumps left", self.distance),
-            (false, true) => format!("a blind jump, off course · {} jumps left", self.distance),
+            (true, _) if d == 0 => "the echoes were true · home".to_string(),
+            (true, false) => format!("true echo · closer to home · {d} jumps left"),
+            (true, true) => format!("a lucky blind jump · {d} jumps left"),
+            (false, false) => format!("the echo was jammed · a detour · {d} jumps left"),
+            (false, true) => format!("a blind jump, off course · {d} jumps left"),
         };
-        log::info!("jump from sector {} truth={truth} distance={}", self.sector.number, self.distance);
+        log::info!("jump from sector {} truth={truth} to {} distance={d}", self.sector.number, self.route.here().name);
         self.note = Some((line, NOTE_TIME));
-        if self.distance == 0 {
-            self.state = State::Home;
+        // the field swings the way the route bends on the map
+        self.turn_dir = if self.route.at.1 >= from { 1.0 } else { -1.0 };
+        self.enemies.clear();
+        self.shots.clear();
+        self.typing = Typing::default();
+        self.set_state(State::Turn);
+    }
+
+    /// Leaves the map: the next sector begins.
+    pub fn fly_on(&mut self) {
+        if self.state != State::Map {
             return;
         }
         let closeness = self.closeness();
         self.sector = Sector::new(self.sector.number + 1, closeness, &mut self.rng);
-        self.typing = Typing::default();
-        self.enemies.clear();
-        self.shots.clear();
         self.spawner = Spawner::default();
+        self.ship.x = 8.0;
+        self.note = None;
+        self.set_state(State::Flight);
     }
 
     /// Ship `i` fires: at the nearest ship of the other side half the time, if
@@ -306,7 +340,7 @@ impl Game {
             }
             Some(Hit::Dead) => {
                 fx::burst(&mut self.particles, cx, cy, 50, 70.0, Tint::Player, &mut self.rng);
-                self.state = State::Over;
+                self.set_state(State::Over);
                 log::info!("game over, score {}", self.score);
             }
         }
@@ -398,5 +432,45 @@ mod tests {
         }
         assert!(g.enemies.len() <= 20 && g.shots.len() < 400 && g.particles.len() < 2000);
         assert!(g.score > 0, "something got shot down");
+    }
+
+    #[test]
+    fn a_portal_turns_the_field_then_shows_the_map_then_flies_on() {
+        let mut g = game();
+        for _ in 0..60 * 60 {
+            g.update(&Controls::default());
+            g.ship.grace = 1.0;
+        }
+        assert_eq!(g.sector.phase, Phase::Portals);
+        let p = g.sector.portals[0].clone();
+        g.ship.x = p.x;
+        g.ship.y = p.y + 4.0;
+        g.update(&Controls::default());
+        assert_eq!(g.state, State::Turn);
+        assert!(g.enemies.is_empty(), "the war stays behind");
+        for _ in 0..(TURN_TIME * 60.0) as usize + 2 {
+            g.update(&Controls::default());
+        }
+        assert_eq!(g.state, State::Map);
+        g.fly_on();
+        assert_eq!((g.state, g.sector.number), (State::Flight, 2));
+    }
+
+    #[test]
+    fn the_last_true_jump_arrives_home() {
+        let mut g = game();
+        g.route.at = (1, 0);
+        for _ in 0..60 * 60 {
+            g.update(&Controls::default());
+            g.ship.grace = 1.0;
+        }
+        g.sector.portals[0].truth = true;
+        let p = g.sector.portals[0].clone();
+        g.ship.x = p.x;
+        g.ship.y = p.y + 4.0;
+        for _ in 0..(TURN_TIME * 60.0) as usize + 4 {
+            g.update(&Controls::default());
+        }
+        assert_eq!(g.state, State::Home);
     }
 }

@@ -66,8 +66,12 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         while now >= next && steps < 5 {
             if !input.confirm_quit {
                 // Enter on the game-over screen flies again
-                if matches!(game.state, game::State::Over | game::State::Home) && input.bomb {
-                    game.restart();
+                if input.bomb {
+                    match game.state {
+                        game::State::Over | game::State::Home => game.restart(),
+                        game::State::Map => game.fly_on(),
+                        _ => {}
+                    }
                 }
                 for c in input.typed.drain(..) {
                     game.type_letter(c);

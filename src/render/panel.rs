@@ -6,7 +6,10 @@ use super::chrome;
 use super::echoes;
 use crate::game::echo::EchoState;
 use crate::game::sector::Phase;
-use crate::game::Game;
+use crate::game::{Game, State};
+
+/// What the receiver hears on arrival.
+const HOME_ECHO: (&str, &str) = ("hello from the children of planet earth", "Voyager Golden Record · 1977");
 use super::palette::{self, CHROME_BG, DIM, TRACE};
 use super::sprites;
 use ratatui::buffer::Buffer;
@@ -34,6 +37,13 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
     let x = chrome::text(buf, clip.x, inner.y, "RX ", label);
     let locked = game.typing.lock.and_then(|id| game.sector.echo(id)).filter(|e| e.state == EchoState::Drifting);
     let drifting = game.sector.echoes.iter().any(|e| e.state == EchoState::Drifting);
+    if game.state == State::Home {
+        // the last echo: perfectly clear and steady
+        let x = chrome::text(buf, x, inner.y, HOME_ECHO.0, Style::default().fg(palette::rgb(palette::SIGNAL[2])).add_modifier(Modifier::BOLD));
+        chrome::text(buf, x + 2, inner.y, HOME_ECHO.1, Style::default().fg(DIM));
+        chrome::text(buf, clip.x, inner.y + 1, "◉ home", Style::default().fg(palette::rgb(palette::SIGNAL[2])));
+        return;
+    }
     if let Some(e) = locked {
         let cells = echoes::cells(e, game.tick);
         echoes::put_cells(buf, x as i32, inner.y, &cells, clip);

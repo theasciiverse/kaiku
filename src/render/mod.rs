@@ -3,6 +3,7 @@
 mod canvas;
 mod chrome;
 mod echoes;
+mod journey;
 mod palette;
 mod panel;
 mod sprites;
@@ -42,6 +43,39 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.score, input.mode_note());
 
     let mut canvas = Canvas::new(play.width, play.height);
+    let bg = palette::tunnel(game.sector.number);
+    // dots to half-block pixels: 2×2 dots each
+    let px = |v: f32| (v / 2.0).round() as i32;
+    match game.state {
+        State::Map => journey::map(&mut canvas, buf, play, game),
+        State::Turn => {
+            journey::turn(&mut canvas, game);
+            sprites::draw(&mut canvas, &sprites::SHIP, px(game.ship.x), px(game.ship.y), game.tick);
+            canvas.blit(buf, play, bg);
+        }
+        State::Flight | State::Over | State::Home => field(&mut canvas, buf, play, bg, game),
+    }
+
+    if !input.confirm_quit {
+        match game.state {
+            State::Over => chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score)),
+            // let Earth rise a while before the words
+            State::Home if game.state_t > 4.0 => {
+                // left of Earth, not over it
+                let left = Rect { width: play.width * 3 / 5, ..play };
+                chrome::question(buf, left, &format!("HOME  ·  score {}  ·  enter to fly again", game.score))
+            }
+            _ => {}
+        }
+    }
+    if input.confirm_quit {
+        chrome::question(buf, play, "Quit Kaiku?  y / n");
+    }
+}
+
+/// The tunnel: stars, war, echoes, portals, the ship; Earth when home.
+fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg: ratatui::style::Color, game: &Game) {
+    let px = |v: f32| (v / 2.0).round() as i32;
     for s in &game.stars.stars {
         canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
     }
@@ -53,42 +87,34 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
             canvas.dot(s.x as i32 - i, s.y as i32, palette::SHOT);
         }
     }
-    // dots to half-block pixels: 2×2 dots each
-    let px = |v: f32| (v / 2.0).round() as i32;
+    if game.state == State::Home {
+        journey::earth(canvas, game);
+    }
     for e in &game.enemies {
         let art: &[&str] = match e.kind {
             Kind::Scout => &sprites::SCOUT,
             Kind::Gunship => &sprites::GUNSHIP,
         };
-        sprites::draw_enemy(&mut canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
+        sprites::draw_enemy(canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
     }
     for p in &game.sector.portals {
-        echoes::portal(&mut canvas, p, game.tick);
+        echoes::portal(canvas, p, game.tick);
     }
     // the ship blinks while invulnerable
     let blink = game.ship.grace > 0.0 && (game.tick / 4).is_multiple_of(2);
-    if game.state == State::Flight && !blink {
-        sprites::draw(&mut canvas, &sprites::SHIP, px(game.ship.x), px(game.ship.y), game.tick);
+    if game.state != State::Over && !blink {
+        sprites::draw(canvas, &sprites::SHIP, px(game.ship.x), px(game.ship.y), game.tick);
     }
     // enemy fire last, as half-block pixels in its own colour: nothing may hide it
     for s in game.shots.iter().filter(|s| s.owner != Owner::Player) {
         canvas.pixel(px(s.x - 1.0), px(s.y - 1.0), palette::ENEMY_SHOT);
     }
-    canvas.blit(buf, play, palette::SPACE);
-    echoes::draw(buf, play, &game.sector.echoes, game.tick);
-    for p in &game.sector.portals {
-        echoes::portal_label(buf, play, p, &game.sector.echoes);
-    }
-
-    if !input.confirm_quit {
-        match game.state {
-            State::Over => chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score)),
-            State::Home => chrome::question(buf, play, &format!("HOME  ·  score {}  ·  enter to fly again", game.score)),
-            State::Flight => {}
+    canvas.blit(buf, play, bg);
+    if game.state != State::Home {
+        echoes::draw(buf, play, &game.sector.echoes, game.tick);
+        for p in &game.sector.portals {
+            echoes::portal_label(buf, play, p, &game.sector.echoes);
         }
-    }
-    if input.confirm_quit {
-        chrome::question(buf, play, "Quit Kaiku?  y / n");
     }
 }
 
@@ -96,6 +122,9 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
 /// echo's clarity, or a murmur while echoes are in range.
 fn signal(game: &Game) -> f32 {
     use crate::game::echo::EchoState;
+    if game.state == State::Home {
+        return 1.0;
+    }
     let drifting = game.sector.echoes.iter().filter(|e| e.state == EchoState::Drifting);
     match game.typing.lock.and_then(|id| game.sector.echo(id)) {
         Some(e) => e.clarity,
@@ -168,5 +197,55 @@ mod tests {
         }
         assert!(text.contains('▸'), "the locked echo is marked");
         assert!(text.contains(&format!("RX {}", &game.sector.echoes[0].text[..3])), "the receiver shows it being decoded");
+    }
+
+    fn frame(game: &Game, w: u16, h: u16) -> String {
+        let mut term = Terminal::new(TestBackend::new(w, h)).unwrap();
+        let input = Input::with_mode(Mode::Timing);
+        term.draw(|f| draw(f, game, &input)).unwrap();
+        let buf = term.backend().buffer();
+        let text: String = (0..h).map(|y| (0..w).map(|x| buf[(x, y)].symbol()).collect::<String>() + "\n").collect();
+        if std::env::var("KAIKU_PRINT").is_ok() {
+            println!("{text}");
+        }
+        text
+    }
+
+    #[test]
+    fn the_map_shows_the_route_home() {
+        let mut game = Game::new(5);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.route.jump(true, &mut crate::game::rng::Rng::new(1));
+        game.route.jump(false, &mut crate::game::rng::Rng::new(2));
+        game.state = State::Map;
+        let text = frame(&game, 100, 30);
+        assert!(text.contains("ROUTE HOME") && text.contains("HOME") && text.contains('★'));
+        assert!(text.contains(&game.route.here().name));
+        assert!(text.contains("6 jumps to home"));
+    }
+
+    #[test]
+    fn home_shows_earth_and_the_last_echo() {
+        let mut game = Game::new(5);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.state = State::Home;
+        game.state_t = 5.0;
+        let text = frame(&game, 100, 30);
+        assert!(text.contains("hello from the children of planet earth"));
+        assert!(text.contains("HOME  ·  score"));
+    }
+
+    #[test]
+    fn the_turn_draws_streaking_stars_and_the_ship() {
+        let mut game = Game::new(6);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.state = State::Turn;
+        game.state_t = crate::game::TURN_TIME / 2.0;
+        let text = frame(&game, 100, 30);
+        assert!(text.chars().filter(|c| ('\u{2801}'..='\u{28FF}').contains(c)).count() > 100, "streaks and the ring");
+        assert!(text.contains('▀'), "the ship rides through");
     }
 }
