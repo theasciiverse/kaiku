@@ -30,6 +30,9 @@ of ideas, not a spec. Don't hold the design to them.
 - **Turns and tunnels:** when an echo points the way, the whole play area
   turns, so you feel you are heading in a new direction. There are
   different tunnels to take on your way home.
+  To try first: the turn is a full-field rotation animation (Braille), and
+  play stays horizontal afterwards; the new tunnel's look and the map show
+  the new heading.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
 - **Look: a lovely mix of ASCII, Braille and half-blocks.** A natural split:
