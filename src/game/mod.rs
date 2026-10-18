@@ -326,7 +326,8 @@ impl Game {
         }
         if self.state == State::Flight {
             let was = self.sector.phase;
-            self.sector.update(war_dt, self.w, self.h, &mut self.rng);
+            let pod_letters: Vec<char> = self.pods.iter().filter(|p| p.live()).filter_map(Target::next_letter).collect();
+            self.sector.update(war_dt, self.w, self.h, &pod_letters, &mut self.rng);
             if was == Phase::Flight && self.sector.phase == Phase::Portals && self.sector.number.is_multiple_of(GUARD_EVERY) {
                 self.send_guard();
             }
@@ -1080,7 +1081,7 @@ mod tests {
         let mut rng = Rng::new(5);
         let mut s = Sector::new(4, g.closeness(), &mut rng);
         for _ in 0..60 * 40 {
-            s.update(DT, 160.0, 72.0, &mut rng);
+            s.update(DT, 160.0, 72.0, &[], &mut rng);
         }
         let truth = s.echoes.iter().find(|e| e.truth).unwrap().clarity;
         assert!(s.echoes.iter().filter(|e| !e.truth).all(|e| e.clarity < truth));
@@ -1095,5 +1096,26 @@ mod tests {
         g.pods[0].x = g.w - 20.0;
         g.type_letter('f');
         assert_eq!(g.typing.lock, Some(10_001));
+    }
+
+    #[test]
+    fn a_new_echo_never_shares_a_first_letter_with_a_live_pod() {
+        for seed in 0..20 {
+            let mut g = Game::new(seed);
+            g.resize(80, 20);
+            // pods wanting every letter but a handful
+            for (i, c) in "abcdefghijklmnopqrstuvw".chars().enumerate() {
+                let word: &'static str = Box::leak(c.to_string().into_boxed_str());
+                g.pods.push(Pod::new(20_000 + i as u32, PowerUp::Shield, word, 300.0, 10.0));
+            }
+            for _ in 0..60 * 11 {
+                g.update(&Controls::default());
+                g.ship.grace = 1.0;
+            }
+            for e in g.sector.echoes.iter() {
+                let first = e.letters().next().unwrap();
+                assert!(!"abcdefghijklmnopqrstuvw".contains(first), "seed {seed}: {:?}", e.text);
+            }
+        }
     }
 }

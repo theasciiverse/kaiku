@@ -73,10 +73,12 @@ impl Sector {
         }
     }
 
-    pub fn update(&mut self, dt: f32, w: f32, h: f32, rng: &mut Rng) {
+    /// `others` are the letters other live typing targets (pods) want next: a
+    /// new echo starts with none of them either.
+    pub fn update(&mut self, dt: f32, w: f32, h: f32, others: &[char], rng: &mut Rng) {
         self.t += dt;
         while self.arrived < ECHO_TIMES.len() && self.t >= ECHO_TIMES[self.arrived] {
-            self.arrive(w, h, rng);
+            self.arrive(w, h, others, rng);
         }
         for e in &mut self.echoes {
             e.update(dt);
@@ -92,10 +94,11 @@ impl Sector {
     /// An echo arrives from the right: a real transmission if it is the true
     /// one, a jammed copy otherwise. Its first letter differs from every other
     /// drifting echo's next letter, so one key always names one echo.
-    fn arrive(&mut self, w: f32, h: f32, rng: &mut Rng) {
+    fn arrive(&mut self, w: f32, h: f32, others: &[char], rng: &mut Rng) {
         let truth = self.arrived == self.truth_at;
         self.arrived += 1;
-        let taken: Vec<char> = self.echoes.iter().filter(|e| e.state == EchoState::Drifting).filter_map(Echo::next_letter).collect();
+        let mut taken: Vec<char> = self.echoes.iter().filter(|e| e.state == EchoState::Drifting).filter_map(Echo::next_letter).collect();
+        taken.extend_from_slice(others);
         for _ in 0..40 {
             let t = &self.pool[(rng.unit() * self.pool.len() as f32) as usize % self.pool.len()];
             let text = if truth { t.text.to_string() } else { echo::jammed(t, &self.pool, rng) };
@@ -160,7 +163,7 @@ mod tests {
 
     fn run(s: &mut Sector, secs: f32, rng: &mut Rng) {
         for _ in 0..(secs * 60.0) as usize {
-            s.update(1.0 / 60.0, 160.0, 72.0, rng);
+            s.update(1.0 / 60.0, 160.0, 72.0, &[], rng);
         }
     }
 
