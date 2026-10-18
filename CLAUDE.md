@@ -24,6 +24,7 @@ of ideas, not a spec. Don't hold the design to them.
   war's jamming sends false echoes alongside the true one.)
 - **A stage map between stages** shows your progress home: where you are,
   the jumps taken, how far is left.
+- **Getting hit:** a shield bar plus a few lives.
 - **Typing is for echoes and power-ups.** Shooting is the combat; typing
   decodes echoes and wins power-ups (for example by typing the word a
   power-up carries).
@@ -41,6 +42,12 @@ of ideas, not a spec. Don't hold the design to them.
   fine detail such as bullets, particles, starfield and the turn animation.
   Asciiverse precedents: Ceres, Panzer and Calvary (half-blocks); Entity and
   Prince of Braille (block glyphs plus Braille).
+- **Chrome around the play area is visually stunning too,** inspired by
+  Charm's Crush TUI: a custom wordmark built from letterforms (one letter
+  stretched), horizontal colour gradients, `╱` diagonal hatch fields and
+  gradient `╱╱╱` after titles, rounded borders, shimmering indicators.
+  Crush is FSL-1.1-MIT (source-available, MIT after two years): read it
+  for ideas (`internal/ui/logo`, `internal/ui/styles`), don't copy code.
 - **Typing is plain a–z.** No accents to type.
 - **Movement:** arrow keys and Ctrl+h/j/k/l, on Asciiverse's held-key input
   layer (adapt `entity/src/input.rs`, as Ceres, Brickspire and Marble
