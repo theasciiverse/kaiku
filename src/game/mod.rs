@@ -40,6 +40,8 @@ const WAR_FIRE: f32 = 0.5;
 /// How much a jammer on screen takes off every echo's clarity.
 const JAM: f32 = 0.3;
 const MINE_SHRAPNEL: usize = 8;
+/// Every this many sectors a carrier guards the gates.
+const GUARD_EVERY: u32 = 3;
 /// A lancer's beam takes this much shield.
 const BEAM_DAMAGE: f32 = 0.5;
 /// Seconds the field takes to swing round after a portal.
@@ -294,7 +296,11 @@ impl Game {
             self.spawner.update(DT, self.w, self.h, self.sector.number, &mut self.rng, &mut self.enemies);
         }
         if self.state == State::Flight {
+            let was = self.sector.phase;
             self.sector.update(war_dt, self.w, self.h, &mut self.rng);
+            if was == Phase::Flight && self.sector.phase == Phase::Portals && self.sector.number.is_multiple_of(GUARD_EVERY) {
+                self.send_guard();
+            }
             self.enter_portal();
         }
         let target_y = self.ship.center().1;
@@ -500,6 +506,16 @@ impl Game {
         let len = (dx * dx + dy * dy).sqrt().max(0.001);
         let side = e.side;
         self.shots.push(Shot::new(mx, my, dx / len * ENEMY_SHOT_SPEED, dy / len * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
+    }
+
+    /// A carrier comes to hold in front of the gates as they open.
+    fn send_guard(&mut self) {
+        let side = if self.rng.unit() < 0.5 { Side::Amber } else { Side::Jade };
+        let y = self.h / 2.0 - 8.0;
+        let hold = self.w * 0.55;
+        self.enemies.push(Enemy::of(Kind::Carrier, side, self.w + 2.0, y, hold, &mut self.rng));
+        self.note = Some(("⚠ a carrier guards the gates".to_string(), NOTE_TIME));
+        log::info!("gate guard in sector {}", self.sector.number);
     }
 
     /// A carrier's salvo: three shots fanned out ahead of it.
@@ -872,7 +888,7 @@ mod tests {
                 State::Home => break,
                 State::Flight => {
                     // type the next letter of the nearest drifting echo that's on screen
-                    let next = g.sector.echoes.iter().filter(|e| e.live() && e.x < g.w - 10.0).min_by(|a, b| a.x.total_cmp(&b.x)).and_then(|e| Target::next_letter(e));
+                    let next = g.sector.echoes.iter().filter(|e| e.live() && e.x < g.w - 10.0).min_by(|a, b| a.x.total_cmp(&b.x)).and_then(Target::next_letter);
                     if let Some(c) = next {
                         g.type_letter(c);
                     }
@@ -915,6 +931,20 @@ mod tests {
                 total += t as f32 / 60.0;
             }
             println!("sector {level}: a naive pilot lasts {:.0} s on average", total / 8.0);
+        }
+    }
+
+    #[test]
+    fn every_third_sector_a_carrier_guards_the_gates() {
+        for (number, guarded) in [(2, false), (3, true)] {
+            let mut g = game();
+            g.sector = Sector::new(number, 0.0, &mut Rng::new(2));
+            for _ in 0..60 * 59 {
+                g.update(&Controls::default());
+                g.ship.grace = 1.0;
+            }
+            let guard = g.enemies.iter().any(|e| e.kind == Kind::Carrier && e.x > g.w * 0.4);
+            assert_eq!(guard, guarded, "sector {number}");
         }
     }
 }

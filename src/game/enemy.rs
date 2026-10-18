@@ -115,6 +115,8 @@ const LANCE_FIRE: f32 = 0.6;
 const LANCER_STAY: f32 = 12.0;
 const JAMMER_STAY: f32 = 22.0;
 const CARRIER_SPEED: f32 = 7.0;
+/// A carrier guarding the gates stays this long before it gives up.
+const GUARD_STAY: f32 = 45.0;
 
 #[derive(Clone, Debug)]
 pub struct Enemy {
@@ -146,7 +148,8 @@ impl Enemy {
         Enemy::new(Kind::Gunship, side, x, y, phase, hold_x, rng)
     }
 
-    /// Any other kind, holding (if it holds) at `hold_x`.
+    /// Any other kind, holding (if it holds) at `hold_x`. A carrier with a
+    /// `hold_x` is a gate guard; with 0 it crosses the tunnel.
     pub fn of(kind: Kind, side: Side, x: f32, y: f32, hold_x: f32, rng: &mut Rng) -> Enemy {
         let phase = rng.range(0.0, std::f32::consts::TAU);
         Enemy::new(kind, side, x, y, phase, hold_x, rng)
@@ -251,8 +254,13 @@ impl Enemy {
             }
             Kind::Jammer => self.hold_then_leave(dt, JAMMER_STAY, 0.6, 4.0),
             Kind::Carrier => {
-                self.x -= CARRIER_SPEED * dt;
-                self.y = self.base_y + (self.phase + self.age * 0.4).sin() * 3.0;
+                if self.hold_x > 0.0 {
+                    // a gate guard: glides in front of the gates and stays
+                    self.hold_then_leave(dt, GUARD_STAY, 0.4, 6.0);
+                } else {
+                    self.x -= CARRIER_SPEED * dt;
+                    self.y = self.base_y + (self.phase + self.age * 0.4).sin() * 3.0;
+                }
                 self.launch_in -= dt;
                 if self.launch_in <= 0.0 && self.x + sw < w {
                     self.launch_in = rng.range(3.5, 5.0);
