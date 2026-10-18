@@ -1,0 +1,20 @@
+# Earth's transmissions, bouncing around the pocket of space the surge threw
+# you into. One per line: text | source. Typing uses the letters only; spaces
+# and punctuation fill themselves in.
+#
+# Public domain only: NASA mission audio and US government works. The Voyager
+# greeting's rights are still to be checked before release.
+the eagle has landed | Apollo 11 · 1969
+houston tranquility base here | Apollo 11 · 1969
+one small step for man | Apollo 11 · 1969
+one giant leap for mankind | Apollo 11 · 1969
+magnificent desolation | Apollo 11 · 1969
+we came in peace for all mankind | Apollo 11 plaque · 1969
+houston we've had a problem | Apollo 13 · 1970
+we choose to go to the moon | John F. Kennedy · 1962
+not because they are easy | John F. Kennedy · 1962
+but because they are hard | John F. Kennedy · 1962
+godspeed john glenn | Mercury-Atlas 6 · 1962
+good night good luck | Apollo 8 · 1968
+in the beginning | Apollo 8 · 1968
+hello from the children of planet earth | Voyager Golden Record · 1977

@@ -2,6 +2,7 @@
 
 mod canvas;
 mod chrome;
+mod echoes;
 mod palette;
 mod panel;
 mod sprites;
@@ -34,10 +35,9 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         buf.set_string(area.x, area.y, "Kaiku needs a bigger terminal", Style::default().fg(palette::TEXT));
         return;
     }
-    // no receiver signal yet: echoes arrive in M2
-    chrome::header(buf, l.header, game.tick, 0.0);
+    chrome::header(buf, l.header, game.tick, signal(game));
     chrome::border(buf, l.frame);
-    panel::receiver(buf, l.receiver, game.tick);
+    panel::receiver(buf, l.receiver, game);
     panel::powerups(buf, l.powerups, &[], game.tick);
     chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.score, input.mode_note());
 
@@ -62,6 +62,9 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         };
         sprites::draw_enemy(&mut canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
     }
+    for p in &game.sector.portals {
+        echoes::portal(&mut canvas, p, game.tick);
+    }
     // the ship blinks while invulnerable
     let blink = game.ship.grace > 0.0 && (game.tick / 4).is_multiple_of(2);
     if game.state == State::Flight && !blink {
@@ -72,12 +75,31 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         canvas.pixel(px(s.x - 1.0), px(s.y - 1.0), palette::ENEMY_SHOT);
     }
     canvas.blit(buf, play, palette::SPACE);
+    echoes::draw(buf, play, &game.sector.echoes, game.tick);
+    for p in &game.sector.portals {
+        echoes::portal_label(buf, play, p, &game.sector.echoes);
+    }
 
-    if game.state == State::Over && !input.confirm_quit {
-        chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score));
+    if !input.confirm_quit {
+        match game.state {
+            State::Over => chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score)),
+            State::Home => chrome::question(buf, play, &format!("HOME  ·  score {}  ·  enter to fly again", game.score)),
+            State::Flight => {}
+        }
     }
     if input.confirm_quit {
         chrome::question(buf, play, "Quit Kaiku?  y / n");
+    }
+}
+
+/// What the receiver hears, 0..1, for the header's waveform: the locked
+/// echo's clarity, or a murmur while echoes are in range.
+fn signal(game: &Game) -> f32 {
+    use crate::game::echo::EchoState;
+    let drifting = game.sector.echoes.iter().filter(|e| e.state == EchoState::Drifting);
+    match game.typing.lock.and_then(|id| game.sector.echo(id)) {
+        Some(e) => e.clarity,
+        None => drifting.map(|e| e.clarity * 0.4).fold(0.0, f32::max),
     }
 }
 
@@ -121,5 +143,30 @@ mod tests {
         assert!(text.contains("RECEIVER") && text.contains("POWER-UPS"), "the bottom panel");
         assert!(text.contains('▀') || text.contains('▄'), "the ship is half-blocks");
         assert!(text.chars().any(|c| ('\u{2801}'..='\u{28FF}').contains(&c)), "stars and shots are Braille");
+    }
+
+    #[test]
+    fn an_echo_being_decoded_shows_in_the_field_and_the_receiver() {
+        let mut game = Game::new(4);
+        let mut term = Terminal::new(TestBackend::new(100, 30)).unwrap();
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        for _ in 0..60 * 13 {
+            game.update(&Controls::default());
+        }
+        let letters: String = game.sector.echoes[0].letters().take(6).collect();
+        for c in letters.chars() {
+            game.type_letter(c);
+        }
+        game.update(&Controls::default());
+        let input = Input::with_mode(Mode::Timing);
+        term.draw(|f| draw(f, &game, &input)).unwrap();
+        let buf = term.backend().buffer();
+        let text: String = (0..30).map(|y| (0..100).map(|x| buf[(x, y)].symbol()).collect::<String>() + "\n").collect();
+        if std::env::var("KAIKU_PRINT").is_ok() {
+            println!("{text}");
+        }
+        assert!(text.contains('▸'), "the locked echo is marked");
+        assert!(text.contains(&format!("RX {}", &game.sector.echoes[0].text[..3])), "the receiver shows it being decoded");
     }
 }

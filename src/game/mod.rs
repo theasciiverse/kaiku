@@ -1,21 +1,26 @@
 //! The simulation: no terminal in here, so it runs headless in tests.
 
+pub mod echo;
 pub mod enemy;
 pub mod fx;
 pub mod rng;
+pub mod sector;
 pub mod ship;
 pub mod shot;
 pub mod spawn;
 pub mod stars;
+pub mod typing;
 
 use crate::input::Controls;
 use enemy::Enemy;
 use fx::{Particle, Tint};
 use rng::Rng;
+use sector::{Phase, Sector};
 use ship::{Hit, Ship};
 use shot::{Owner, Shot};
 use spawn::Spawner;
 use stars::Starfield;
+use typing::{Key, Typing};
 
 /// Fixed simulation step: 60 Hz, as in Entity.
 pub const DT: f32 = 1.0 / 60.0;
@@ -23,6 +28,10 @@ const SHOT_SPEED: f32 = 260.0;
 const ENEMY_SHOT_SPEED: f32 = 70.0;
 /// Chance that a ship fires at the other side rather than at the player.
 const WAR_FIRE: f32 = 0.5;
+/// Jumps between the surge and home along the shortest route.
+pub const START_DISTANCE: u32 = 6;
+/// How long a receiver note stays up, in seconds.
+const NOTE_TIME: f32 = 6.0;
 
 /// An axis-aligned box in dots.
 #[derive(Clone, Copy, Debug)]
@@ -56,6 +65,8 @@ pub enum State {
     Flight,
     /// out of lives: the war goes on without you
     Over,
+    /// arrived
+    Home,
 }
 
 pub struct Game {
@@ -70,12 +81,20 @@ pub struct Game {
     pub stars: Starfield,
     pub score: u32,
     pub tick: u64,
+    pub sector: Sector,
+    pub typing: Typing,
+    /// jumps left to home
+    pub distance: u32,
+    /// a line for the receiver (jump results), and seconds it has left
+    pub note: Option<(String, f32)>,
     spawner: Spawner,
     rng: Rng,
 }
 
 impl Game {
     pub fn new(seed: u64) -> Game {
+        let mut rng = Rng::new(seed);
+        let sector = Sector::new(1, 0.0, &mut rng);
         Game {
             w: 0.0,
             h: 0.0,
@@ -87,8 +106,12 @@ impl Game {
             stars: Starfield::default(),
             score: 0,
             tick: 0,
+            sector,
+            typing: Typing::default(),
+            distance: START_DISTANCE,
+            note: None,
             spawner: Spawner::default(),
-            rng: Rng::new(seed),
+            rng,
         }
     }
 
@@ -127,7 +150,19 @@ impl Game {
             let (x, y) = self.ship.nose();
             self.shots.push(Shot::new(x, y, SHOT_SPEED, 0.0, Owner::Player));
         }
-        self.spawner.update(DT, self.w, self.h, &mut self.rng, &mut self.enemies);
+        if self.sector.phase == Phase::Flight {
+            self.spawner.update(DT, self.w, self.h, &mut self.rng, &mut self.enemies);
+        }
+        if self.state == State::Flight {
+            self.sector.update(DT, self.w, self.h, &mut self.rng);
+            self.enter_portal();
+        }
+        if let Some((_, t)) = &mut self.note {
+            *t -= DT;
+            if *t <= 0.0 {
+                self.note = None;
+            }
+        }
         for i in 0..self.enemies.len() {
             if self.enemies[i].update(DT, self.w, self.h, &mut self.rng) {
                 self.enemy_fires(i);
@@ -140,6 +175,57 @@ impl Game {
         if self.tick.is_multiple_of(30) {
             log::trace!("tick {} enemies {} shots {} shield {} lives {}", self.tick, self.enemies.len(), self.shots.len(), self.ship.shield, self.ship.lives);
         }
+    }
+
+    /// A typed letter, for the typing layer.
+    pub fn type_letter(&mut self, c: char) {
+        if self.state != State::Flight {
+            return;
+        }
+        if let Key::Decoded(id) = self.typing.key(c, &mut self.sector.echoes) {
+            if let Some(e) = self.sector.echo(id) {
+                log::info!("decoded echo {id} truth={} {:?}", e.truth, e.text);
+                self.score += 50 * e.text.len() as u32;
+            }
+        }
+    }
+
+    pub fn drop_lock(&mut self) {
+        self.typing.drop_lock(&mut self.sector.echoes);
+    }
+
+    /// How near home, 0 (where the surge left you) to 1.
+    pub fn closeness(&self) -> f32 {
+        1.0 - self.distance as f32 / START_DISTANCE as f32
+    }
+
+    /// The jump: a true portal brings home one step closer, a false one adds a
+    /// detour. Then the next sector begins.
+    fn enter_portal(&mut self) {
+        let ship = self.ship.aabb();
+        let Some(p) = self.sector.portals.iter().find(|p| p.aabb().overlaps(&ship)) else { return };
+        let truth = p.truth;
+        let blind = p.echo.is_none();
+        self.distance = if truth { self.distance.saturating_sub(1) } else { self.distance + 1 };
+        let line = match (truth, blind) {
+            (true, _) if self.distance == 0 => "the echoes were true: home".to_string(),
+            (true, false) => format!("true echo · closer to home · {} jumps left", self.distance),
+            (true, true) => format!("a lucky blind jump · {} jumps left", self.distance),
+            (false, false) => format!("the echo was jammed · a detour · {} jumps left", self.distance),
+            (false, true) => format!("a blind jump, off course · {} jumps left", self.distance),
+        };
+        log::info!("jump from sector {} truth={truth} distance={}", self.sector.number, self.distance);
+        self.note = Some((line, NOTE_TIME));
+        if self.distance == 0 {
+            self.state = State::Home;
+            return;
+        }
+        let closeness = self.closeness();
+        self.sector = Sector::new(self.sector.number + 1, closeness, &mut self.rng);
+        self.typing = Typing::default();
+        self.enemies.clear();
+        self.shots.clear();
+        self.spawner = Spawner::default();
     }
 
     /// Ship `i` fires: at the nearest ship of the other side half the time, if

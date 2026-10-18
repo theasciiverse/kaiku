@@ -66,14 +66,18 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         while now >= next && steps < 5 {
             if !input.confirm_quit {
                 // Enter on the game-over screen flies again
-                if game.state == game::State::Over && input.bomb {
+                if matches!(game.state, game::State::Over | game::State::Home) && input.bomb {
                     game.restart();
+                }
+                for c in input.typed.drain(..) {
+                    game.type_letter(c);
+                }
+                if std::mem::take(&mut input.drop_lock) {
+                    game.drop_lock();
                 }
                 game.update(&input.controls(now));
             }
-            // nothing types yet: echoes and power-ups come in M2 and M4
             input.typed.clear();
-            input.drop_lock = false;
             input.bomb = false;
             next += TICK;
             steps += 1;

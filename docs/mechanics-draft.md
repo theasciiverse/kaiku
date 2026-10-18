@@ -44,7 +44,8 @@ A **sector** is one stage: one tunnel between two portals.
    direction of home. The others are false, bounced off the war or faked by
    jammers.
 4. **Decoding.** Type an echo's first letter to lock onto it, then keep
-   typing. Each correct letter locks in clear. A decoded echo shows its
+   typing. Each correct letter locks in clear. Only the letters are typed; spaces and
+   punctuation fill themselves in (Space is the gun). A decoded echo shows its
    **clarity**, which is how strongly it points home.
 5. **Portals.** At the end of the sector, one portal appears per decoded
    echo, each tagged with its echo. Fly into one. If you decoded none, a
