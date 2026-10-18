@@ -20,6 +20,9 @@ of ideas, not a spec. Don't hold the design to them.
   and then into full clear while still blinking and garbled. Typing it out
   makes it clear, letter by letter. **The echoes are what guide you home:**
   each one you type points the way to the next portal or tunnel.
+- **Typing is for echoes and power-ups.** Shooting is the combat; typing
+  decodes echoes and wins power-ups (for example by typing the word a
+  power-up carries).
 - **Turns and tunnels:** when an echo points the way, the whole play area
   turns, so you feel you are heading in a new direction. There are
   different tunnels to take on your way home.
