@@ -203,7 +203,8 @@ impl Echo {
         if t % period < window {
             // the flicker: most letters come clear, blinking
             if roll < 0.75 + 0.25 * c {
-                return Vis::Clear { blink: (t / 5).is_multiple_of(2) };
+                // about 3 Hz: slow enough to read through, easy on the eyes
+                return Vis::Clear { blink: (t / 10).is_multiple_of(2) };
             }
         } else if roll < 0.2 + 0.35 * c + listened {
             return Vis::Clear { blink: false };

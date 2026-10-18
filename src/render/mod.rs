@@ -491,4 +491,30 @@ mod tests {
         assert!(top_row.contains('▀') || top_row.contains('▄') || top_row.contains(' '), "{top_row}");
         assert_ne!(game.terrain.style, crate::game::terrain::Style::Open);
     }
+
+    /// Not a check: how long a busy frame takes to draw on a big terminal.
+    /// `cargo test --release frame_cost -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn frame_cost() {
+        let mut game = Game::new(3);
+        let play = play_area(Rect::new(0, 0, 200, 60));
+        game.resize(play.width, play.height);
+        game.start_at(4);
+        for t in 0..60 * 40 {
+            let dy = if (t / 60) % 2 == 0 { 1 } else { -1 };
+            game.update(&Controls { dx: 0, dy, fire: true });
+            game.ship.grace = 1.0;
+        }
+        let mut term = Terminal::new(TestBackend::new(200, 60)).unwrap();
+        let input = Input::with_mode(Mode::Timing);
+        let n = 300;
+        let t0 = std::time::Instant::now();
+        for _ in 0..n {
+            game.update(&Controls { dx: 0, dy: 0, fire: true });
+            term.draw(|f| draw(f, &game, &input)).unwrap();
+        }
+        let per = t0.elapsed() / n;
+        println!("{} enemies, {} shots: {per:?} per update+frame", game.enemies.len(), game.shots.len());
+    }
 }
