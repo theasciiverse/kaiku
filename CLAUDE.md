@@ -14,7 +14,8 @@ of ideas, not a spec. Don't hold the design to them.
   non-letter keys are free for actions.
 - **Story: Echo Home.** An interplanetary war is raging. A surge has
   thrown your ship far off course, and to get home you must find the right
-  portals by their echo.
+  portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
+  Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
 - **Typing is plain a–z.** No accents to type.
