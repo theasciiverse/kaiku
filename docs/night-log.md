@@ -83,6 +83,10 @@ civilian is still out there, flying home*. The lines are in
 **A bug fixed** (`9b0cef0`): far out on detours, the *true* echo could read
 fainter than the fakes, because closeness went negative. It's now clamped.
 
+**Found by a later bug-hunt pass** (`77c4868`): shrinking the terminal to
+a sliver mid-game crashed (a pod's clamp). It's fixed, and a test now draws
+every state at sizes from 10×4 to 240×70.
+
 ## Decisions I made for you
 
 All of these are easy to change; most are a single constant.
