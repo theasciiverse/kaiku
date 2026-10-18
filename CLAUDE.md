@@ -186,6 +186,11 @@ does both).
   buffs, such as faster shots, splash damage on long words, or more Signal.
   Taking a hit costs one upgrade tier, never all of them, to avoid
   Gradius's death spiral.
+- **Translation bonus (power-up):** a marked bonus enemy carries a foreign
+  word. Type it, and it flips to ask for the English meaning; type that too
+  ("schmetterling", then "butterfly") for a power-up or a large payload.
+  English glosses for bonus words must be short and typable in a–z, and
+  `alt` lists other accepted answers ("hello" or "hi").
 - **Specials on non-letter keys:**
   - **Enter = EMP**, which clears nearby enemies and missiles. A few charges
     per wave.
@@ -314,6 +319,12 @@ not start until Phase 1 is fun as a single-horde loop.
 ---
 
 ## 10. Open Questions
+
+- **Foreign languages at all? Not decided yet.** The game may be English at
+  its core, with other languages coming in as bonus content such as the
+  translation power-up (§5.3) rather than as whole factions. This decides
+  how much of §4 (hordes as languages, polarity, zone branches, Japanese)
+  survives.
 
 - **Signal vs. lives:** is a drain-and-refill meter clearer than discrete
   lives in a terminal HUD?
