@@ -1,5 +1,6 @@
 //! The simulation: no terminal in here, so it runs headless in tests.
 
+pub mod cockpit;
 pub mod echo;
 pub mod enemy;
 pub mod fx;
@@ -14,6 +15,7 @@ pub mod stars;
 pub mod typing;
 
 use crate::input::Controls;
+use cockpit::Cockpit;
 use enemy::Enemy;
 use fx::{Particle, Tint};
 use rng::Rng;
@@ -67,6 +69,8 @@ impl Aabb {
 pub enum State {
     /// the opening story crawl
     Intro,
+    /// the tutorial: repairing the receiver, the first echo
+    Cockpit,
     Flight,
     /// through a portal: the field swings round to the new heading
     Turn,
@@ -97,6 +101,10 @@ pub struct Game {
     pub state_t: f32,
     /// which way the field swings at a turn: -1 or 1
     pub turn_dir: f32,
+    /// the tutorial scene, while it runs
+    pub cockpit: Option<Cockpit>,
+    /// the turn under way is the one out of the cockpit
+    first_turn: bool,
     /// a line for the receiver (jump results), and seconds it has left
     pub note: Option<(String, f32)>,
     spawner: Spawner,
@@ -124,6 +132,8 @@ impl Game {
             route,
             state_t: 0.0,
             turn_dir: 1.0,
+            cockpit: None,
+            first_turn: false,
             note: None,
             spawner: Spawner::default(),
             rng,
@@ -151,8 +161,23 @@ impl Game {
         if self.state_t < intro::duration() {
             self.state_t = intro::duration();
         } else {
-            self.set_state(State::Flight);
+            self.cockpit = Some(Cockpit::new(&mut self.rng));
+            self.set_state(State::Cockpit);
         }
+    }
+
+    /// Enter in the cockpit: skip the tutorial, straight into the first turn.
+    pub fn skip_cockpit(&mut self) {
+        if self.state == State::Cockpit {
+            self.leave_cockpit();
+        }
+    }
+
+    fn leave_cockpit(&mut self) {
+        self.cockpit = None;
+        self.turn_dir = 1.0;
+        self.first_turn = true;
+        self.set_state(State::Turn);
     }
 
     /// Fits the field to the play area, in cells. The first fit places the ship.
@@ -182,7 +207,18 @@ impl Game {
         let warp = if self.state == State::Turn { 6.0 } else { 1.0 };
         self.stars.update(DT, warp, self.w, self.h, &mut self.rng);
         if self.state == State::Turn && self.state_t >= TURN_TIME {
-            self.set_state(if self.route.distance() == 0 { State::Home } else { State::Map });
+            // the first turn, out of the cockpit, goes straight into sector 1
+            let next = match () {
+                _ if std::mem::take(&mut self.first_turn) => State::Flight,
+                _ if self.route.distance() == 0 => State::Home,
+                _ => State::Map,
+            };
+            self.set_state(next);
+        }
+        if let Some(c) = &mut self.cockpit {
+            if c.update(DT) {
+                self.leave_cockpit();
+            }
         }
         if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h) {
             let (x, y) = self.ship.nose();
@@ -217,6 +253,10 @@ impl Game {
 
     /// A typed letter, for the typing layer.
     pub fn type_letter(&mut self, c: char) {
+        if let (State::Cockpit, Some(cockpit)) = (self.state, &mut self.cockpit) {
+            cockpit.key(c);
+            return;
+        }
         if self.state != State::Flight {
             return;
         }
@@ -492,5 +532,25 @@ mod tests {
             g.update(&Controls::default());
         }
         assert_eq!(g.state, State::Home);
+    }
+
+    #[test]
+    fn the_cockpit_leads_through_the_first_turn_into_sector_one() {
+        let mut g = game();
+        g.start_intro();
+        g.intro_key();
+        g.intro_key();
+        assert_eq!(g.state, State::Cockpit);
+        for c in "reboottunescantheeaglehaslanded".chars() {
+            g.type_letter(c);
+        }
+        for _ in 0..60 * 2 {
+            g.update(&Controls::default());
+        }
+        assert_eq!(g.state, State::Turn);
+        for _ in 0..(TURN_TIME * 60.0) as usize + 2 {
+            g.update(&Controls::default());
+        }
+        assert_eq!((g.state, g.sector.number), (State::Flight, 1), "no map before the first sector");
     }
 }

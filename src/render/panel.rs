@@ -4,6 +4,7 @@
 use super::canvas::Canvas;
 use super::chrome;
 use super::echoes;
+use crate::game::cockpit::Step;
 use crate::game::echo::EchoState;
 use crate::game::sector::Phase;
 use crate::game::{Game, State};
@@ -35,7 +36,8 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
     let clip = Rect { x: inner.x + 1, width: inner.width.saturating_sub(2), ..inner };
     let label = Style::default().fg(DIM).add_modifier(Modifier::BOLD);
     let x = chrome::text(buf, clip.x, inner.y, "RX ", label);
-    let locked = game.typing.lock.and_then(|id| game.sector.echo(id)).filter(|e| e.state == EchoState::Drifting);
+    let cockpit_echo = game.cockpit.as_ref().filter(|c| matches!(c.step, Step::Echo | Step::Done)).map(|c| &c.echo);
+    let locked = cockpit_echo.or_else(|| game.typing.lock.and_then(|id| game.sector.echo(id)).filter(|e| e.state == EchoState::Drifting));
     let drifting = game.sector.echoes.iter().any(|e| e.state == EchoState::Drifting);
     if game.state == State::Home {
         // the last echo: perfectly clear and steady

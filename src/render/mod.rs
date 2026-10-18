@@ -2,6 +2,7 @@
 
 mod canvas;
 mod chrome;
+mod cockpit;
 mod echoes;
 mod journey;
 mod palette;
@@ -48,6 +49,11 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     let px = |v: f32| (v / 2.0).round() as i32;
     match game.state {
         State::Intro => journey::intro(&mut canvas, buf, play, game),
+        State::Cockpit => {
+            if let Some(c) = &game.cockpit {
+                cockpit::draw(&mut canvas, buf, play, game, c);
+            }
+        }
         State::Map => journey::map(&mut canvas, buf, play, game),
         State::Turn => {
             journey::turn(&mut canvas, game);
@@ -125,6 +131,13 @@ fn signal(game: &Game) -> f32 {
     use crate::game::echo::EchoState;
     if game.state == State::Home {
         return 1.0;
+    }
+    if let Some(c) = game.cockpit.as_ref().filter(|c| c.step != crate::game::cockpit::Step::Command(0)) {
+        // the receiver hums once rebooted, and sings once the echo is in
+        return match c.step {
+            crate::game::cockpit::Step::Command(_) => 0.1,
+            _ => c.echo.clarity,
+        };
     }
     let drifting = game.sector.echoes.iter().filter(|e| e.state == EchoState::Drifting);
     match game.typing.lock.and_then(|id| game.sector.echo(id)) {
@@ -263,6 +276,27 @@ mod tests {
         let done = frame(&game, 100, 30);
         assert!(done.contains("FOLLOW THEM"), "the first key finishes the text");
         game.intro_key();
-        assert_eq!(game.state, State::Flight, "the next one flies");
+        assert_eq!(game.state, State::Cockpit, "the next one goes to the cockpit");
+    }
+
+    #[test]
+    fn the_cockpit_shows_the_console_and_then_the_echo() {
+        let mut game = Game::new(6);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.start_intro();
+        game.intro_key();
+        game.intro_key();
+        for c in "reb".chars() {
+            game.type_letter(c);
+        }
+        let first = frame(&game, 100, 30);
+        assert!(first.contains("receiver offline") && first.contains("> reboot"), "the prompt shows what to type");
+        for c in "oottunescan".chars() {
+            game.type_letter(c);
+        }
+        let echo = frame(&game, 100, 30);
+        assert!(echo.contains("tuned to 1420 MHz") && echo.contains("type what you read"));
+        assert!(echo.contains("RX "), "the receiver has the echo too");
     }
 }

@@ -60,6 +60,10 @@ impl Canvas {
                 let i = cy as usize * self.cols as usize + cx as usize;
                 let Some(cell) = buf.cell_mut((area.x + cx, area.y + cy)) else { continue };
                 match self.px[i] {
+                    // one colour top and bottom: a plain cell, no glyph seams
+                    [Some(t), Some(b)] if t == b => {
+                        cell.set_char(' ').set_bg(b);
+                    }
                     [Some(t), Some(b)] => {
                         cell.set_char('▀').set_fg(t).set_bg(b);
                     }
