@@ -105,7 +105,7 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         sprites::draw_enemy(canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
     }
     for p in &game.sector.portals {
-        echoes::portal(canvas, p, game.tick);
+        echoes::portal(canvas, p, &game.sector, game.tick);
     }
     for p in &game.pods {
         sprites::draw_pod(canvas, p.kind, px(p.x), px(p.y), game.tick);
@@ -136,7 +136,7 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         echoes::draw(buf, play, &game.sector.echoes, game.tick);
         echoes::pod_words(buf, play, &game.pods);
         for p in &game.sector.portals {
-            echoes::portal_label(buf, play, p, &game.sector.echoes);
+            echoes::portal_label(buf, play, p, &game.sector, game.tick);
         }
     }
 }
@@ -314,5 +314,28 @@ mod tests {
         let echo = frame(&game, 100, 30);
         assert!(echo.contains("tuned to 1420 MHz") && echo.contains("type what you read"));
         assert!(echo.contains("RX "), "the receiver has the echo too");
+    }
+
+    #[test]
+    fn a_jammed_echo_rules_out_its_gate() {
+        let mut game = Game::new(9);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        for _ in 0..60 * 11 {
+            game.update(&Controls::default());
+            game.ship.grace = 1.0;
+        }
+        game.sector.echoes[0].truth = false;
+        let letters: String = game.sector.echoes[0].letters().collect();
+        for c in letters.chars() {
+            game.type_letter(c);
+        }
+        for _ in 0..60 * 50 {
+            game.update(&Controls::default());
+            game.ship.grace = 1.0;
+        }
+        let text = frame(&game, 100, 30);
+        assert!(text.contains("✕ jammed"), "the gate and the receiver say so");
+        assert_eq!(text.matches("???").count(), 2, "the other two gates are blind");
     }
 }

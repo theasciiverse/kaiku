@@ -13,7 +13,7 @@ const PORTALS_AT: f32 = 58.0;
 /// Gates at the end of every sector: one per echo, one of them true.
 const GATES: usize = ECHO_TIMES.len();
 /// How a blind gate glows: dim, and the same for all of them.
-const BLIND_GLOW: f32 = 0.15;
+pub const BLIND_GLOW: f32 = 0.15;
 /// Portal size in dots: 6×10 half-block pixels.
 pub const PORTAL_W: f32 = 12.0;
 pub const PORTAL_H: f32 = 20.0;
@@ -30,10 +30,9 @@ pub struct Portal {
     pub y: f32,
     /// where it stops drifting in
     rest_x: f32,
-    /// the decoded echo it answers to; `None` for a blind gate
+    /// the echo it answers to; `None` for one that never arrived
     pub echo: Option<u32>,
     pub truth: bool,
-    pub clarity: f32,
 }
 
 impl Portal {
@@ -120,17 +119,10 @@ impl Sector {
     /// with its clarity; the others are blind (`???`), all alike.
     fn open_portals(&mut self, w: f32, h: f32, rng: &mut Rng) {
         self.phase = Phase::Portals;
-        let mut gates: Vec<(Option<u32>, bool, f32)> = self
-            .echoes
-            .iter()
-            .map(|e| match e.state {
-                EchoState::Decoded => (Some(e.id), e.truth, e.clarity),
-                _ => (None, e.truth, BLIND_GLOW),
-            })
-            .collect();
+        let mut gates: Vec<(Option<u32>, bool)> = self.echoes.iter().map(|e| (Some(e.id), e.truth)).collect();
         // an echo that never arrived still leaves a gate, a false one
         while gates.len() < GATES {
-            gates.push((None, false, BLIND_GLOW));
+            gates.push((None, false));
         }
         let n = gates.len();
         let gap = (h - PORTAL_H * n as f32) / (n as f32 + 1.0);
@@ -138,15 +130,27 @@ impl Sector {
         for i in (1..n).rev() {
             gates.swap(i, (rng.unit() * (i + 1) as f32) as usize % (i + 1));
         }
-        for (i, (echo, truth, clarity)) in gates.into_iter().enumerate() {
+        for (i, (echo, truth)) in gates.into_iter().enumerate() {
             let y = gap + i as f32 * (PORTAL_H + gap);
-            self.portals.push(Portal { x: w + 4.0, y, rest_x: w - PORTAL_W - 16.0, echo, truth, clarity });
+            self.portals.push(Portal { x: w + 4.0, y, rest_x: w - PORTAL_W - 16.0, echo, truth });
         }
         log::info!("gates open: {n}");
     }
 
     pub fn echo(&self, id: u32) -> Option<&Echo> {
         self.echoes.iter().find(|e| e.id == id)
+    }
+
+    /// A gate's echo if it has been decoded (decoding late still counts); a
+    /// gate without one is blind.
+    pub fn named(&self, p: &Portal) -> Option<&Echo> {
+        p.echo.and_then(|id| self.echo(id)).filter(|e| e.state == EchoState::Decoded)
+    }
+
+    /// How brightly a gate glows: its echo's clarity once decoded, else dim
+    /// and the same as every other blind gate.
+    pub fn glow(&self, p: &Portal) -> f32 {
+        self.named(p).map_or(BLIND_GLOW, |e| e.clarity)
     }
 }
 
@@ -184,12 +188,12 @@ mod tests {
         assert_eq!(s.phase, Phase::Portals);
         assert_eq!(s.portals.len(), 3);
         assert_eq!(s.portals.iter().filter(|p| p.truth).count(), 1, "only one leads home");
-        let named: Vec<_> = s.portals.iter().filter_map(|p| p.echo).collect();
+        let named: Vec<u32> = s.portals.iter().filter_map(|p| s.named(p)).map(|e| e.id).collect();
         assert_eq!(named, vec![s.echoes[0].id], "only the decoded echo names its gate");
 
         let mut blind = Sector::new(2, 0.0, &mut rng);
         run(&mut blind, 60.0, &mut rng);
         assert_eq!(blind.portals.len(), 3);
-        assert!(blind.portals.iter().all(|p| p.echo.is_none() && p.clarity == BLIND_GLOW), "undecoded gates all look alike");
+        assert!(blind.portals.iter().all(|p| blind.named(p).is_none() && blind.glow(p) == BLIND_GLOW), "undecoded gates all look alike");
     }
 }

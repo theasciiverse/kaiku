@@ -5,7 +5,7 @@ use super::canvas::Canvas;
 use super::chrome;
 use super::echoes;
 use crate::game::cockpit::Step;
-use crate::game::echo::EchoState;
+use crate::game::echo::{EchoState, Verdict};
 use crate::game::sector::Phase;
 use crate::game::{Game, State};
 
@@ -15,7 +15,7 @@ use super::palette::{self, CHROME_BG, DIM, TRACE};
 use super::sprites;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 
 /// Cheap per-cell hash for static noise, so it shimmers but replays.
 fn noise(x: u16, tick: u64) -> u32 {
@@ -63,25 +63,27 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
     let mut x = clip.x;
     let decoded: Vec<_> = game.sector.echoes.iter().rev().filter(|e| e.state == EchoState::Decoded).collect();
     if decoded.is_empty() {
-        let hint = if game.sector.phase == Phase::Portals { "portals open · fly into one" } else { "··· listening ···" };
+        let hint = if game.sector.phase == Phase::Portals { "gates open · fly into one" } else { "··· listening ···" };
         chrome::text(buf, x, inner.y + 1, hint, Style::default().fg(TRACE));
     }
     for e in decoded {
         if x >= clip.right() {
             break;
         }
-        let item = [
-            ('◉', Style::default().fg(palette::ramp(&palette::SIGNAL, e.clarity))),
-            (' ', Style::default()),
-        ];
-        echoes::put_cells(buf, x as i32, inner.y + 1, &item, clip);
-        let text: Vec<(char, Style)> = format!("{}  {}", e.text, e.source)
-            .chars()
-            .enumerate()
-            .map(|(i, c)| (c, Style::default().fg(if i < e.text.chars().count() { palette::rgb(palette::SIGNAL[2]) } else { DIM })))
-            .collect();
-        echoes::put_cells(buf, x as i32 + 2, inner.y + 1, &text, clip);
-        x += text.len() as u16 + 5;
+        // the analysis: a spinner, then the verdict
+        let (mark, verdict, fg) = match e.verdict() {
+            Verdict::Pending => (echoes::SPINNER[(game.tick / 6) as usize % echoes::SPINNER.len()], "analysing", palette::rgb(palette::SIGNAL[1])),
+            Verdict::Steady => ('◉', "steady", palette::rgb(palette::SIGNAL[2])),
+            Verdict::Jammed => ('✕', "jammed", Color::Rgb(150, 92, 110)),
+        };
+        let jammed = e.verdict() == Verdict::Jammed;
+        let text_fg = if jammed { DIM } else { palette::rgb(palette::SIGNAL[2]) };
+        let mut cells = vec![(mark, Style::default().fg(fg)), (' ', Style::default())];
+        cells.extend(e.text.chars().map(|c| (c, Style::default().fg(text_fg))));
+        cells.extend(format!("  {}  ", e.source).chars().map(|c| (c, Style::default().fg(DIM))));
+        cells.extend(verdict.chars().map(|c| (c, Style::default().fg(fg).add_modifier(Modifier::ITALIC))));
+        echoes::put_cells(buf, x as i32, inner.y + 1, &cells, clip);
+        x += cells.len() as u16 + 3;
     }
 }
 

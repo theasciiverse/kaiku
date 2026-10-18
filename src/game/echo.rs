@@ -53,6 +53,17 @@ pub enum EchoState {
     Lost,
 }
 
+/// What the receiver makes of a decoded echo once it has analysed it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Verdict {
+    /// not decoded yet, or still being analysed
+    Pending,
+    /// a false echo: its gate is ruled out
+    Jammed,
+    /// a true echo holds steady (a strong hint, never a promise on screen)
+    Steady,
+}
+
 /// How one character of an echo shows right now.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Vis {
@@ -65,8 +76,14 @@ pub enum Vis {
 }
 
 /// Drift speed in dots per second; slower while being decoded.
-const DRIFT: f32 = 10.0;
-const DRIFT_LOCKED: f32 = 4.0;
+const DRIFT: f32 = 7.0;
+const DRIFT_LOCKED: f32 = 3.0;
+/// Seconds the receiver takes to analyse a decoded echo.
+pub const ANALYSIS_TIME: f32 = 4.0;
+/// The longer an echo is in range, the clearer it reads: this much more of it
+/// shows per second, up to `LISTEN_MAX`.
+const LISTEN_RATE: f32 = 0.015;
+const LISTEN_MAX: f32 = 0.3;
 /// A wrong key costs this much clarity.
 const MISS_COST: f32 = 0.03;
 
@@ -85,6 +102,9 @@ pub struct Echo {
     pub locked: bool,
     /// seconds of miss flash left
     pub flash: f32,
+    /// seconds in range, and seconds of analysis since it was decoded
+    age: f32,
+    pub analysed: f32,
     /// position of the first character, in dots (y on whole cells)
     pub x: f32,
     pub y: f32,
@@ -94,7 +114,7 @@ pub struct Echo {
 impl Echo {
     pub fn new(id: u32, text: String, source: &'static str, truth: bool, clarity: f32, (x, y): (f32, f32), rng: &mut Rng) -> Echo {
         let y = (y / 4.0).floor() * 4.0;
-        Echo { id, text, source, truth, clarity, progress: 0, state: EchoState::Drifting, locked: false, flash: 0.0, x, y, seed: rng.next_u64() }
+        Echo { id, text, source, truth, clarity, progress: 0, state: EchoState::Drifting, locked: false, flash: 0.0, age: 0.0, analysed: 0.0, x, y, seed: rng.next_u64() }
     }
 
     /// The letters to type, in order.
@@ -128,6 +148,10 @@ impl Echo {
 
     pub fn update(&mut self, dt: f32) {
         self.flash = (self.flash - dt).max(0.0);
+        self.age += dt;
+        if self.state == EchoState::Decoded {
+            self.analysed += dt;
+        }
         if self.state == EchoState::Drifting {
             self.x -= if self.locked { DRIFT_LOCKED } else { DRIFT } * dt;
             if self.x + self.width() < 0.0 {
@@ -137,8 +161,17 @@ impl Echo {
         }
     }
 
+    pub fn verdict(&self) -> Verdict {
+        match () {
+            _ if self.state != EchoState::Decoded || self.analysed < ANALYSIS_TIME => Verdict::Pending,
+            _ if self.truth => Verdict::Steady,
+            _ => Verdict::Jammed,
+        }
+    }
+
     /// How character `i` of the text shows at `tick`. Clear echoes flicker into
-    /// full view more often and for longer, and stay partly readable between.
+    /// full view more often and for longer, and stay partly readable between;
+    /// every echo reads a little better the longer it has been in range.
     pub fn vis(&self, i: usize, tick: u64) -> Vis {
         let mut letter = 0;
         let mut is_letter = false;
@@ -159,17 +192,18 @@ impl Echo {
             return Vis::Typed;
         }
         let c = self.clarity.clamp(0.0, 1.0);
-        let period = ((3.2 - 1.6 * c) * 60.0) as u64;
-        let window = ((0.3 + 0.7 * c) * 60.0) as u64;
+        let listened = (self.age * LISTEN_RATE).min(LISTEN_MAX);
+        let period = ((2.4 - 1.2 * c) * 60.0) as u64;
+        let window = ((0.7 + 0.9 * c) * 60.0) as u64;
         let t = tick + self.seed % period;
         let cycle = t / period;
         let roll = unit(hash(self.seed ^ i as u64, cycle));
         if t % period < window {
             // the flicker: most letters come clear, blinking
-            if roll < 0.55 + 0.45 * c {
+            if roll < 0.75 + 0.25 * c {
                 return Vis::Clear { blink: (t / 5).is_multiple_of(2) };
             }
-        } else if roll < 0.15 * c {
+        } else if roll < 0.2 + 0.35 * c + listened {
             return Vis::Clear { blink: false };
         }
         Vis::Garbled(hash(self.seed.wrapping_add(i as u64), tick / 4) as u32)
@@ -236,7 +270,7 @@ mod tests {
             let e = echo("the eagle has landed", c);
             (0..1200u64).flat_map(|t| (0..20).map(move |i| (t, i))).filter(|&(t, i)| matches!(e.vis(i, t), Vis::Clear { .. })).count()
         };
-        assert!(readable(0.9) > readable(0.3) * 2, "{} vs {}", readable(0.9), readable(0.3));
+        assert!(readable(0.9) as f32 > readable(0.3) as f32 * 1.4, "{} vs {}", readable(0.9), readable(0.3));
     }
 
     #[test]
@@ -248,5 +282,25 @@ mod tests {
                 assert_ne!(jammed(t, &all, &mut rng), t.text);
             }
         }
+    }
+
+    #[test]
+    fn a_decoded_echo_is_analysed_and_a_false_one_is_ruled_out() {
+        let mut e = Echo::new(1, "lost".to_string(), "test", false, 0.3, (100.0, 20.0), &mut Rng::new(5));
+        for c in "lost".chars() {
+            e.key(c);
+        }
+        assert_eq!(e.verdict(), Verdict::Pending, "analysis takes a moment");
+        e.update(ANALYSIS_TIME);
+        assert_eq!(e.verdict(), Verdict::Jammed);
+    }
+
+    #[test]
+    fn echoes_read_better_the_longer_they_are_in_range() {
+        let readable = |e: &Echo| (0..600u64).flat_map(|t| (0..20).map(move |i| (t, i))).filter(|&(t, i)| matches!(e.vis(i, t), Vis::Clear { .. })).count();
+        let mut e = echo("the eagle has landed", 0.3);
+        let fresh = readable(&e);
+        e.update(20.0);
+        assert!(readable(&e) > fresh, "{} vs {fresh}", readable(&e));
     }
 }

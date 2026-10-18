@@ -3,9 +3,9 @@
 
 use super::canvas::Canvas;
 use super::palette::{self, SIGNAL};
-use crate::game::echo::{Echo, EchoState, Vis};
+use crate::game::echo::{Echo, EchoState, Verdict, Vis};
 use crate::game::powerup::Pod;
-use crate::game::sector::Portal;
+use crate::game::sector::{Portal, Sector};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
@@ -60,15 +60,25 @@ pub fn draw(buf: &mut Buffer, play: Rect, echoes: &[Echo], tick: u64) {
     }
 }
 
-/// A portal: a ring of half-block pixels whose colours swirl; brighter for a
-/// clearer echo.
-pub fn portal(canvas: &mut Canvas, p: &Portal, tick: u64) {
+/// What a gate's echo has been judged, if it has been decoded.
+fn verdict<'a>(p: &Portal, sector: &'a Sector) -> Option<(Verdict, &'a Echo)> {
+    sector.named(p).map(|e| (e.verdict(), e))
+}
+
+/// A gate: a ring of half-block pixels whose colours swirl, brighter for a
+/// clearer echo. A gate the receiver has ruled out goes grey and is crossed.
+pub fn portal(canvas: &mut Canvas, p: &Portal, sector: &Sector, tick: u64) {
     const RING: [&str; 10] = [".####.", "##..##", "#....#", "#....#", "#....#", "#....#", "#....#", "#....#", "##..##", ".####."];
     let (px, py) = ((p.x / 2.0).round() as i32, (p.y / 2.0).round() as i32);
-    let glow = 0.35 + 0.65 * p.clarity.clamp(0.0, 1.0);
+    let jammed = matches!(verdict(p, sector), Some((Verdict::Jammed, _)));
+    let glow = 0.35 + 0.65 * sector.glow(p).clamp(0.0, 1.0);
     for (row, line) in RING.iter().enumerate() {
         for (col, ch) in line.chars().enumerate() {
             if ch != '#' {
+                continue;
+            }
+            if jammed {
+                canvas.pixel(px + col as i32, py + row as i32, Color::Rgb(44, 50, 62));
                 continue;
             }
             let t = ((row + col) as u64 * 7 + tick) % 48;
@@ -77,21 +87,38 @@ pub fn portal(canvas: &mut Canvas, p: &Portal, tick: u64) {
             canvas.pixel(px + col as i32, py + row as i32, palette::rgb(palette::lerp(palette::CHROME_BG_RGB, (r, g, b), glow)));
         }
     }
+    if jammed {
+        // a cross through the ring, in dots
+        let (dx, dy) = (px * 2, py * 2);
+        for k in 0..12 {
+            for (x, y) in [(dx + k, dy + 4 + k), (dx + 11 - k, dy + 4 + k)] {
+                canvas.dot(x, y, Color::Rgb(150, 92, 110));
+            }
+        }
+    }
 }
 
-/// A portal's label above it: the start of its echo, or `???` for a blind one.
-pub fn portal_label(buf: &mut Buffer, play: Rect, p: &Portal, echoes: &[Echo]) {
-    let text = match p.echo.and_then(|id| echoes.iter().find(|e| e.id == id)) {
-        Some(e) => e.text.chars().take(14).collect::<String>(),
-        None => "???".to_string(),
+/// A gate's label above it: its echo's start while being analysed (with a
+/// spinner), the echo and `steady` for a true one, `✕ jammed` once ruled out,
+/// `???` for a blind gate.
+pub fn portal_label(buf: &mut Buffer, play: Rect, p: &Portal, sector: &Sector, tick: u64) {
+    let start = |e: &Echo| e.text.chars().take(14).collect::<String>();
+    let (text, fg) = match verdict(p, sector) {
+        None => ("???".to_string(), palette::rgb(SIGNAL[0])),
+        Some((Verdict::Pending, e)) => (format!("{} {}", start(e), SPINNER[(tick / 6) as usize % SPINNER.len()]), palette::rgb(SIGNAL[1])),
+        Some((Verdict::Steady, e)) => (format!("{} · steady", start(e)), palette::rgb(SIGNAL[2])),
+        Some((Verdict::Jammed, _)) => ("✕ jammed".to_string(), Color::Rgb(150, 92, 110)),
     };
     let w = text.chars().count() as i32;
     let x = play.x as i32 + (p.x / 2.0) as i32 + 3 - w / 2;
     let y = (play.y + (p.y / 4.0) as u16).saturating_sub(1).max(play.y);
-    let style = Style::default().fg(palette::rgb(SIGNAL[1])).add_modifier(Modifier::ITALIC);
+    let style = Style::default().fg(fg).add_modifier(Modifier::ITALIC);
     let cells: Vec<(char, Style)> = text.chars().map(|c| (c, style)).collect();
     put_cells(buf, x, y, &cells, play);
 }
+
+/// The receiver's analysis spinner.
+pub const SPINNER: [char; 8] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧'];
 
 /// Each pod's word above it: typed letters bright, the rest in the colour of
 /// what the pod holds. Words never garble: they are for the fingers.

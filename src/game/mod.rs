@@ -376,7 +376,7 @@ impl Game {
     fn enter_portal(&mut self) {
         let ship = self.ship.aabb();
         let Some(p) = self.sector.portals.iter().find(|p| p.aabb().overlaps(&ship)) else { return };
-        let (truth, blind) = (p.truth, p.echo.is_none());
+        let (truth, blind) = (p.truth, self.sector.named(p).is_none());
         let from = self.route.at.1;
         self.route.jump(truth, &mut self.rng);
         let d = self.route.distance();

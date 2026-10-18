@@ -50,7 +50,12 @@ A **sector** is one stage: one tunnel between two portals.
 5. **Gates.** At the end of every sector three gates open, one per echo,
    and **only one gets you closer to home**. A gate whose echo you decoded
    shows the echo's text and glows with its clarity; the others are blind
-   (`???`) and look alike. Fly into one. Decoding is how you choose well.
+   (`???`) and look alike. Decoding late, after the gates open, still counts.
+   **Gradual hints:** the receiver analyses each decoded echo for a few
+   seconds. A jammed one is then marked `✕ jammed` and its gate is greyed
+   out and crossed, so decoding one false echo leaves two gates and both
+   leaves one. A true echo only reads `steady`, a strong hint and never a
+   promise. Fly into a gate.
 6. **The turn.** Entering a portal swings the whole field round in a Braille
    rotation animation. Play stays horizontal; the new tunnel's colours,
    walls and heading show where you are going.
@@ -68,7 +73,7 @@ A **sector** is one stage: one tunnel between two portals.
   - The Arecibo message, as a Braille picture echo.
 
   Snippets can cut between sources mid-line, like a radio jumping stations.
-- **Display:** garbled text, drawn as a mix of wrong letters, symbols and
+- **Display (readability tuned up):** garbled text, drawn as a mix of wrong letters, symbols and
   Braille noise, that flickers into full clear for a moment, still blinking.
   The player reads during the flickers. Typed letters stay clear.
 - **Why the flicker matters:** the player can't type what they haven't read,
