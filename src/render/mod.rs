@@ -254,7 +254,7 @@ fn signal(game: &Game) -> f32 {
             _ => c.echo.clarity,
         };
     }
-    let drifting = game.sector.echoes.iter().filter(|e| e.state == EchoState::Drifting);
+    let drifting = game.sector.echoes.iter().filter(|e| e.state == EchoState::Drifting && e.x < game.w);
     match game.typing.lock.and_then(|id| game.sector.echo(id)) {
         Some(e) => e.clarity,
         None => drifting.map(|e| e.clarity * 0.4).fold(0.0, f32::max),

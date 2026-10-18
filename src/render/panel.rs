@@ -38,7 +38,8 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
     let x = chrome::text(buf, clip.x, inner.y, "RX ", label);
     let cockpit_echo = game.cockpit.as_ref().filter(|c| matches!(c.step, Step::Echo | Step::Done)).map(|c| &c.echo);
     let locked = cockpit_echo.or_else(|| game.typing.lock.and_then(|id| game.sector.echo(id)).filter(|e| e.state == EchoState::Drifting));
-    let drifting = game.sector.echoes.iter().any(|e| e.state == EchoState::Drifting);
+    // in range: on screen, not still entering off the edge
+    let drifting = game.sector.echoes.iter().any(|e| e.state == EchoState::Drifting && e.x < game.w);
     if game.state == State::Home {
         // the last echo: perfectly clear and steady
         let x = chrome::text(buf, x, inner.y, HOME_ECHO.0, Style::default().fg(palette::rgb(palette::SIGNAL[2])).add_modifier(Modifier::BOLD));

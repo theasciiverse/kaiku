@@ -388,8 +388,17 @@ impl Game {
         if self.state != State::Flight {
             return;
         }
-        let mut targets: Vec<&mut dyn Target> =
-            self.sector.echoes.iter_mut().map(|e| e as &mut dyn Target).chain(self.pods.iter_mut().map(|p| p as &mut dyn Target)).collect();
+        // only what you can see: a target still entering off the right edge
+        // can't be locked by a letter you had no way of reading
+        let edge = self.w - 2.0;
+        let mut targets: Vec<&mut dyn Target> = self
+            .sector
+            .echoes
+            .iter_mut()
+            .map(|e| e as &mut dyn Target)
+            .chain(self.pods.iter_mut().map(|p| p as &mut dyn Target))
+            .filter(|t| t.x() < edge)
+            .collect();
         let key = self.typing.key(c, &mut targets);
         self.stats.keys += 1;
         if matches!(key, Key::Miss | Key::Stray) {
@@ -1075,5 +1084,16 @@ mod tests {
         }
         let truth = s.echoes.iter().find(|e| e.truth).unwrap().clarity;
         assert!(s.echoes.iter().filter(|e| !e.truth).all(|e| e.clarity < truth));
+    }
+
+    #[test]
+    fn a_target_still_off_screen_cannot_be_locked() {
+        let mut g = game();
+        g.pods.push(Pod::new(10_001, PowerUp::Rapid, "flask", g.w + 2.0, 20.0));
+        g.type_letter('f');
+        assert_eq!(g.typing.lock, None);
+        g.pods[0].x = g.w - 20.0;
+        g.type_letter('f');
+        assert_eq!(g.typing.lock, Some(10_001));
     }
 }
