@@ -484,7 +484,7 @@ impl Game {
     /// detour. The field swings round, then the map shows where you are.
     fn enter_portal(&mut self) {
         let ship = self.ship.aabb();
-        let Some(p) = self.sector.portals.iter().find(|p| p.aabb().overlaps(&ship)) else { return };
+        let Some(p) = self.sector.portals.iter().find(|p| p.open() && p.aabb().overlaps(&ship)) else { return };
         let (truth, blind) = (p.truth, self.sector.named(p).is_none());
         let from = self.route.at.1;
         self.route.jump(truth, &mut self.rng);
@@ -791,7 +791,7 @@ mod tests {
     #[test]
     fn a_portal_turns_the_field_then_shows_the_map_then_flies_on() {
         let mut g = game();
-        for _ in 0..60 * 60 {
+        for _ in 0..60 * 62 {
             g.update(&Controls::default());
             g.ship.grace = 1.0;
         }
@@ -814,7 +814,7 @@ mod tests {
     fn the_last_true_jump_arrives_home() {
         let mut g = game();
         g.route.at = (1, 0);
-        for _ in 0..60 * 60 {
+        for _ in 0..60 * 62 {
             g.update(&Controls::default());
             g.ship.grace = 1.0;
         }
@@ -1117,5 +1117,22 @@ mod tests {
                 assert!(!"abcdefghijklmnopqrstuvw".contains(first), "seed {seed}: {:?}", e.text);
             }
         }
+    }
+
+    #[test]
+    fn a_gate_still_sliding_in_cannot_sweep_up_the_ship() {
+        let mut g = game();
+        for _ in 0..60 * 58 + 10 {
+            g.update(&Controls::default());
+            g.ship.grace = 1.0;
+        }
+        assert_eq!(g.sector.phase, Phase::Portals);
+        // park the ship where the first gate is passing right now
+        let p = g.sector.portals[0].clone();
+        assert!(!p.open());
+        g.ship.x = (p.x - 4.0).min(g.w - ship::SHIP_W);
+        g.ship.y = p.y + 4.0;
+        g.update(&Controls::default());
+        assert_eq!(g.state, State::Flight, "no jump while it slides in");
     }
 }

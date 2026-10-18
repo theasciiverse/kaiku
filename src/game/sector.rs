@@ -36,6 +36,12 @@ pub struct Portal {
 }
 
 impl Portal {
+    /// Settled in place, and so enterable: a gate still sliding in must not
+    /// sweep up a ship that happens to be in its way.
+    pub fn open(&self) -> bool {
+        (self.x - self.rest_x).abs() < 1.5
+    }
+
     pub fn aabb(&self) -> Aabb {
         Aabb::new(self.x + 2.0, self.y + 2.0, self.x + PORTAL_W - 2.0, self.y + PORTAL_H - 2.0)
     }
@@ -87,7 +93,7 @@ impl Sector {
             self.open_portals(w, h, rng);
         }
         for p in &mut self.portals {
-            p.x += (p.rest_x - p.x) * (1.2 * dt).min(1.0);
+            p.x += (p.rest_x - p.x) * (2.0 * dt).min(1.0);
         }
     }
 
