@@ -5,7 +5,8 @@ use ratatui::style::Color;
 pub type Rgb = (u8, u8, u8);
 
 pub const SPACE: Color = Color::Rgb(8, 9, 22);
-pub const CHROME_BG: Color = Color::Rgb(14, 13, 30);
+pub const CHROME_BG_RGB: Rgb = (14, 13, 30);
+pub const CHROME_BG: Color = Color::Rgb(CHROME_BG_RGB.0, CHROME_BG_RGB.1, CHROME_BG_RGB.2);
 pub const HATCH: Color = Color::Rgb(58, 46, 104);
 pub const DIM: Color = Color::Rgb(110, 104, 150);
 pub const TEXT: Color = Color::Rgb(214, 210, 240);

@@ -9,13 +9,30 @@ use ratatui::style::{Color, Modifier, Style};
 pub const WORDMARK: &str = "K A I K U";
 pub const SUBTITLE: &str = "echo home";
 
-/// Splits the screen: header row, bordered play area, HUD row. Returns the
-/// play area inside the border.
-pub fn layout(area: Rect) -> (Rect, Rect, Rect) {
+/// Rows of the bottom panel, borders included: two lines of content.
+pub const PANEL_ROWS: u16 = 4;
+/// Width of the power-up box, borders included: six 5-cell icons, spaced.
+pub const POWERUP_COLS: u16 = 6 * 6 + 3;
+
+/// The screen, top to bottom: header row, bordered play area, the bottom panel
+/// (receiver for messages, power-up illustrations), HUD row.
+pub struct Layout {
+    pub header: Rect,
+    pub frame: Rect,
+    pub receiver: Rect,
+    pub powerups: Rect,
+    pub hud: Rect,
+}
+
+pub fn layout(area: Rect) -> Layout {
     let header = Rect { height: 1.min(area.height), ..area };
     let hud = Rect { y: area.bottom().saturating_sub(1), height: 1.min(area.height), ..area };
-    let frame = Rect { y: area.y + 1, height: area.height.saturating_sub(2), ..area };
-    (header, frame, hud)
+    let panel_y = area.bottom().saturating_sub(1 + PANEL_ROWS);
+    let frame = Rect { y: area.y + 1, height: panel_y.saturating_sub(area.y + 1), ..area };
+    let pw = POWERUP_COLS.min(area.width / 2);
+    let receiver = Rect { y: panel_y, width: area.width - pw, height: PANEL_ROWS, ..area };
+    let powerups = Rect { x: area.x + area.width - pw, y: panel_y, width: pw, height: PANEL_ROWS };
+    Layout { header, frame, receiver, powerups, hud }
 }
 
 /// The play area inside a frame.
@@ -81,6 +98,31 @@ pub fn border(buf: &mut Buffer, frame: Rect) {
         put(buf, l, y, "│", style(l));
         put(buf, r, y, "│", style(r));
     }
+}
+
+/// A border with a title in its top edge, Crush-style: ` title ╱╱╱`.
+pub fn titled(buf: &mut Buffer, frame: Rect, title: &str) {
+    border(buf, frame);
+    if frame.width < title.chars().count() as u16 + 10 {
+        return;
+    }
+    let bg = Style::default().bg(CHROME_BG);
+    let x = put(buf, frame.x + 2, frame.y, &format!(" {title} "), bg.fg(TEXT).add_modifier(Modifier::BOLD));
+    let x = put(buf, x, frame.y, "╱╱╱", bg.fg(HATCH));
+    put(buf, x, frame.y, " ", bg);
+}
+
+/// Fills a rect with the chrome background.
+pub fn clear(buf: &mut Buffer, area: Rect) {
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            put(buf, x, y, " ", Style::default().bg(CHROME_BG));
+        }
+    }
+}
+
+pub fn text(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) -> u16 {
+    put(buf, x, y, s, style.bg(CHROME_BG))
 }
 
 /// HUD line: shield bar, lives, and the input note on the right.

@@ -155,7 +155,9 @@ Credits.
   - `╱` hatching fields.
   - Rounded borders.
   - A HUD with shield, lives, bombs and score.
-  - A receiver panel showing the echo being decoded.
+  - **A bottom panel:** the receiver (longer echoes and ship-to-ship
+    messages are decoded there) and the power-up illustrations, dim until
+    you own them.
   - A small route indicator.
 - **ASCII** for text: echoes, power-up words, the HUD.
 - **Half-blocks** for ships, enemies and tunnel walls.

@@ -45,6 +45,9 @@ of ideas, not a spec. Don't hold the design to them.
   the new heading.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
+- **Bottom panel:** the lower part of the screen is reserved for a message
+  row (the **receiver**, for decoding longer echoes and ship-to-ship
+  communication) and **power-up illustrations**.
 - **Look: a lovely mix of ASCII, Braille and half-blocks.** A natural split:
   ASCII for text (words, echoes, HUD); half-blocks (`▀▄`, two colours a
   cell) for chunky sprites, tunnel walls and terrain; Braille (2×4 dots) for
