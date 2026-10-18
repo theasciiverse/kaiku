@@ -118,7 +118,7 @@ impl Pod {
         self.age += dt;
         self.flash = (self.flash - dt).max(0.0);
         self.x -= if self.locked { DRIFT_LOCKED } else { DRIFT } * dt;
-        self.y = (self.base_y + (self.age * 1.6).sin() * 4.0).clamp(0.0, h - POD_H);
+        self.y = (self.base_y + (self.age * 1.6).sin() * 4.0).clamp(0.0, (h - POD_H).max(0.0));
         if self.x + POD_W < 0.0 {
             self.done = true;
         }

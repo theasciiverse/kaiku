@@ -517,4 +517,44 @@ mod tests {
         let per = t0.elapsed() / n;
         println!("{} enemies, {} shots: {per:?} per update+frame", game.enemies.len(), game.shots.len());
     }
+
+    /// Every state draws at every size without panicking, from too small to
+    /// play to very large.
+    #[test]
+    fn every_state_draws_at_every_size() {
+        let sizes = [(10, 4), (30, 8), (41, 14), (60, 16), (80, 24), (101, 31), (240, 70)];
+        for (w, h) in sizes {
+            let mut game = Game::new(w as u64 * 31 + h as u64);
+            let play = play_area(Rect::new(0, 0, w, h));
+            game.resize(play.width, play.height);
+            game.start_intro();
+            frame(&game, w, h);
+            game.intro_key();
+            frame(&game, w, h);
+            game.intro_key();
+            for c in "rebootab".chars() {
+                game.type_letter(c);
+            }
+            frame(&game, w, h);
+            game.skip_cockpit();
+            for _ in 0..60 {
+                game.update(&Controls::default());
+            }
+            frame(&game, w, h);
+            game.start_at(4);
+            for t in 0..60 * 62 {
+                game.ship.grace = 1.0;
+                game.update(&Controls { dx: 0, dy: if (t / 50) % 2 == 0 { 1 } else { -1 }, fire: true });
+                if t % 600 == 0 {
+                    frame(&game, w, h);
+                }
+            }
+            frame(&game, w, h);
+            for state in [State::Turn, State::Map, State::Home, State::Over] {
+                game.state = state;
+                game.state_t = 5.0;
+                frame(&game, w, h);
+            }
+        }
+    }
 }
