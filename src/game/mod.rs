@@ -854,4 +854,67 @@ mod tests {
         g.set_state(State::Over);
         assert!(g.record && g.best == 250 && g.finished());
     }
+
+    /// A bot that knows the answers: it types every echo it can, steers into
+    /// the true gate, flies on from each map, and is never hit. The whole
+    /// journey must run, crawl to home, without a hitch.
+    #[test]
+    fn a_bot_can_fly_the_whole_way_home() {
+        let mut g = game();
+        g.start_intro();
+        g.intro_key();
+        g.intro_key();
+        g.skip_cockpit();
+        for _ in 0..60 * 60 * 20 {
+            g.ship.grace = 1.0;
+            match g.state {
+                State::Map => g.fly_on(),
+                State::Home => break,
+                State::Flight => {
+                    // type the next letter of the nearest drifting echo that's on screen
+                    let next = g.sector.echoes.iter().filter(|e| e.live() && e.x < g.w - 10.0).min_by(|a, b| a.x.total_cmp(&b.x)).and_then(|e| Target::next_letter(e));
+                    if let Some(c) = next {
+                        g.type_letter(c);
+                    }
+                    if let Some(p) = g.sector.portals.iter().find(|p| p.truth) {
+                        g.ship.x = p.x;
+                        g.ship.y = p.y + 4.0;
+                    }
+                }
+                _ => {}
+            }
+            g.update(&Controls { dx: 0, dy: 0, fire: true });
+        }
+        assert_eq!(g.state, State::Home, "stuck in {:?} at sector {}", g.state, g.sector.number);
+        assert_eq!(g.stats.true_jumps as usize, route::START_DISTANCE);
+        assert!(g.stats.echoes > 0 && g.stats.kills > 0 && g.score > 0);
+    }
+
+    /// Not a check: a difficulty probe. A naive pilot weaves and fires and
+    /// never dodges; how long does it last per sector? Run with
+    /// `cargo test probe -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn probe_survival_per_sector() {
+        for level in [1, 2, 3, 5] {
+            let mut total = 0.0;
+            for seed in 0..8 {
+                let mut g = Game::new(seed);
+                g.resize(96, 22);
+                g.sector = Sector::new(level, 0.0, &mut Rng::new(seed));
+                let mut t = 0;
+                while g.state == State::Flight && t < 60 * 60 * 5 {
+                    let dy = if (t / 70) % 2 == 0 { 1 } else { -1 };
+                    g.update(&Controls { dx: 0, dy, fire: true });
+                    // the sector never ends: keep the war coming
+                    if g.sector.phase == Phase::Portals {
+                        g.sector = Sector::new(level, 0.0, &mut Rng::new(t as u64));
+                    }
+                    t += 1;
+                }
+                total += t as f32 / 60.0;
+            }
+            println!("sector {level}: a naive pilot lasts {:.0} s on average", total / 8.0);
+        }
+    }
 }
