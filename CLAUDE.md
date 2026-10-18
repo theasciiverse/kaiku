@@ -25,6 +25,12 @@ of ideas, not a spec. Don't hold the design to them.
   different tunnels to take on your way home.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
+- **Look: a lovely mix of ASCII, Braille and half-blocks.** A natural split:
+  ASCII for text (words, echoes, HUD); half-blocks (`▀▄`, two colours a
+  cell) for chunky sprites, tunnel walls and terrain; Braille (2×4 dots) for
+  fine detail such as bullets, particles, starfield and the turn animation.
+  Asciiverse precedents: Ceres, Panzer and Calvary (half-blocks); Entity and
+  Prince of Braille (block glyphs plus Braille).
 - **Typing is plain a–z.** No accents to type.
 - **Movement:** arrow keys and Ctrl+h/j/k/l, on Asciiverse's held-key input
   layer (adapt `entity/src/input.rs`, as Ceres, Brickspire and Marble
