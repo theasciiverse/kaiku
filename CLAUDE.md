@@ -16,6 +16,13 @@ of ideas, not a spec. Don't hold the design to them.
   thrown your ship far off course, and to get home you must find the right
   portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
+- **Echoes:** during play an echo shows as garbled text, flickering now
+  and then into full clear while still blinking and garbled. Typing it out
+  makes it clear, letter by letter. Once it is typed, it guides you in the
+  right direction.
+- **Turns and tunnels:** when an echo points the way, the whole play area
+  turns, so you feel you are heading in a new direction. There are
+  different tunnels to take on your way home.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
 - **Typing is plain a–z.** No accents to type.
