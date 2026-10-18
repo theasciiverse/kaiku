@@ -87,7 +87,7 @@ fainter than the fakes, because closeness went negative. It's now clamped.
 a sliver mid-game crashed (a pod's clamp). It's fixed, and a test now draws
 every state at sizes from 10×4 to 240×70. Also (`376dad5`): a letter could
 lock onto an echo or pod still entering off the right edge, unseen. Only
-on-screen targets can be locked now. And (`next commit`): a new echo could
+on-screen targets can be locked now. And (`36bcaeb`): a new echo could
 share its first letter with a live pod, so one key could mean either; echoes
 now avoid pods' letters too.
 
