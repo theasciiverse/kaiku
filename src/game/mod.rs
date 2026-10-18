@@ -193,6 +193,13 @@ impl Game {
         matches!(self.state, State::Over | State::Home)
     }
 
+    /// Starts straight in the tunnel at sector `n`, skipping the opening.
+    pub fn start_at(&mut self, n: u32) {
+        let closeness = self.closeness();
+        self.sector = Sector::new(n.max(1), closeness, &mut self.rng);
+        self.set_state(State::Flight);
+    }
+
     /// Begins with the opening crawl instead of straight in the tunnel.
     pub fn start_intro(&mut self) {
         self.set_state(State::Intro);

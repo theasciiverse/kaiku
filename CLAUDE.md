@@ -87,10 +87,13 @@ of ideas, not a spec. Don't hold the design to them.
 
 ```
 cargo run --release                     # play
+cargo run --release -- --sector 3       # straight into sector 3 (carriers, lancers, jammers)
+cargo run --release -- --skip-intro     # straight into sector 1
 KAIKU_INPUT=latch cargo run --release   # latched keys, for terminals where timing feels wrong
 RUST_LOG=debug cargo run --release 2>kaiku.log
 cargo test
 KAIKU_PRINT=1 cargo test a_frame -- --nocapture   # print a headless frame
+cargo test --release probe -- --ignored --nocapture   # difficulty probe: naive-pilot survival per sector
 ```
 
 Plan and milestones: `docs/code-plan.md`. Mechanics: `docs/mechanics-draft.md`.

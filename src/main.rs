@@ -42,11 +42,26 @@ fn main() -> io::Result<()> {
     result
 }
 
+/// Command line: `--sector N` starts straight in sector N (no crawl, no
+/// cockpit), for trying later sectors; `--skip-intro` starts in sector 1.
+fn start(game: &mut Game) {
+    let args: Vec<String> = std::env::args().collect();
+    let flag = |name: &str| args.iter().position(|a| a == name);
+    if let Some(i) = flag("--sector") {
+        let n = args.get(i + 1).and_then(|n| n.parse().ok()).unwrap_or(1);
+        game.start_at(n);
+    } else if flag("--skip-intro").is_some() {
+        game.start_at(1);
+    } else {
+        game.start_intro();
+    }
+}
+
 fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64);
     let mut game = Game::new(seed);
     game.best = highscore::load();
-    game.start_intro();
+    start(&mut game);
     // the best score is saved once per run, when the run ends on a record
     let mut saved = false;
     let mut input = Input::new(kitty);
