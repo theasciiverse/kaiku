@@ -102,6 +102,8 @@ pub struct Echo {
     pub locked: bool,
     /// seconds of miss flash left
     pub flash: f32,
+    /// clarity a jammer is taking off it right now
+    pub jam: f32,
     /// seconds in range, and seconds of analysis since it was decoded
     age: f32,
     pub analysed: f32,
@@ -114,7 +116,7 @@ pub struct Echo {
 impl Echo {
     pub fn new(id: u32, text: String, source: &'static str, truth: bool, clarity: f32, (x, y): (f32, f32), rng: &mut Rng) -> Echo {
         let y = (y / 4.0).floor() * 4.0;
-        Echo { id, text, source, truth, clarity, progress: 0, state: EchoState::Drifting, locked: false, flash: 0.0, age: 0.0, analysed: 0.0, x, y, seed: rng.next_u64() }
+        Echo { id, text, source, truth, clarity, progress: 0, state: EchoState::Drifting, locked: false, flash: 0.0, jam: 0.0, age: 0.0, analysed: 0.0, x, y, seed: rng.next_u64() }
     }
 
     /// The letters to type, in order.
@@ -191,7 +193,7 @@ impl Echo {
         if letter < self.progress || self.state == EchoState::Decoded {
             return Vis::Typed;
         }
-        let c = self.clarity.clamp(0.0, 1.0);
+        let c = (self.clarity - self.jam).clamp(0.0, 1.0);
         let listened = (self.age * LISTEN_RATE).min(LISTEN_MAX);
         let period = ((2.4 - 1.2 * c) * 60.0) as u64;
         let window = ((0.7 + 0.9 * c) * 60.0) as u64;

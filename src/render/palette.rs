@@ -25,6 +25,8 @@ pub const STAR: [Color; 3] = [Color::Rgb(70, 74, 110), Color::Rgb(130, 136, 180)
 pub const SHOT: Color = Color::Rgb(255, 226, 120);
 /// Reserved for enemy fire: no sprite, word or decoration uses it.
 pub const ENEMY_SHOT: Color = Color::Rgb(255, 54, 64);
+/// The same red, dimmed: a lancer's warning line before the beam.
+pub const BEAM_WARNING: Color = Color::Rgb(150, 36, 46);
 
 pub fn rgb(c: Rgb) -> Color {
     Color::Rgb(c.0, c.1, c.2)

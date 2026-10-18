@@ -2,7 +2,7 @@
 
 use super::canvas::Canvas;
 use super::palette::{self, Rgb};
-use crate::game::enemy::Side;
+use crate::game::enemy::{Kind, Side};
 use crate::game::powerup::PowerUp;
 
 /// The player's ship, nose to the right: 9×5 pixels (`SHIP_W`×`SHIP_H` dots).
@@ -57,6 +57,33 @@ pub fn draw_drone(canvas: &mut Canvas, x: i32, y: i32, tick: u64) {
 /// Enemy ships face left. `a` hull, `A` highlight, `e` engine, `k` dark.
 pub const SCOUT: [&str; 3] = ["..aa.", "kAAae", "..aa."];
 pub const GUNSHIP: [&str; 5] = ["...aa..", ".aaAAae", "kAAAAae", ".aaAAae", "...aa.."];
+pub const INTERCEPTOR: [&str; 3] = ["..aaa.", "kAAAAe", "..aaa."];
+pub const MINE: [&str; 3] = ["a.a", ".A.", "a.a"];
+pub const LANCER: [&str; 4] = ["...aaa.", "kkAAAae", "..AAAae", "...aaa."];
+pub const JAMMER: [&str; 5] = [".A..A.", "..AA..", ".aaaa.", "aakkaa", ".aaaa."];
+pub const CARRIER: [&str; 8] = [
+    "....aaaaaaaa....",
+    "..aaAAAAAAAAaa..",
+    ".aAAAAkkkkAAAAae",
+    "kAAAAAAAAAAAAAae",
+    "kAAAAAAAAAAAAAae",
+    ".aAAAAkkkkAAAAae",
+    "..aaAAAAAAAAaa..",
+    "....aaaaaaaa....",
+];
+
+/// The art for a kind of enemy.
+pub fn enemy_art(kind: Kind) -> &'static [&'static str] {
+    match kind {
+        Kind::Scout => &SCOUT,
+        Kind::Gunship => &GUNSHIP,
+        Kind::Interceptor => &INTERCEPTOR,
+        Kind::Mine => &MINE,
+        Kind::Lancer => &LANCER,
+        Kind::Jammer => &JAMMER,
+        Kind::Carrier => &CARRIER,
+    }
+}
 
 /// Hull, highlight and engine colours of a side.
 pub fn side_colors(side: Side) -> [Rgb; 3] {

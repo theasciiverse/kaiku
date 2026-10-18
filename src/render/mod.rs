@@ -98,11 +98,12 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         journey::earth(canvas, game);
     }
     for e in &game.enemies {
-        let art: &[&str] = match e.kind {
-            Kind::Scout => &sprites::SCOUT,
-            Kind::Gunship => &sprites::GUNSHIP,
-        };
-        sprites::draw_enemy(canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
+        // an interceptor lining up flashes: its tell before the dash
+        let flash = e.flash > 0.0 || (e.aiming() && (game.tick / 4).is_multiple_of(2));
+        sprites::draw_enemy(canvas, sprites::enemy_art(e.kind), e.side, flash, px(e.x), px(e.y));
+        if e.kind == Kind::Jammer {
+            jammer_pulse(canvas, e, game.tick);
+        }
     }
     for p in &game.sector.portals {
         echoes::portal(canvas, p, &game.sector, game.tick);
@@ -127,6 +128,18 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
     if game.state != State::Over && !blink {
         sprites::draw(canvas, &sprites::SHIP, px(game.ship.x), px(game.ship.y), game.tick);
     }
+    // lancer beams: a dotted warning line, then the beam, in the enemy-fire red
+    for b in game.enemies.iter().filter(|e| e.hp > 0).filter_map(|e| e.beam()) {
+        if b.live {
+            for x in 0..px(b.x_end) {
+                canvas.pixel(x, px(b.y - 1.0), palette::ENEMY_SHOT);
+            }
+        } else {
+            for x in (0..b.x_end as i32).step_by(3) {
+                canvas.dot(x, b.y as i32, palette::BEAM_WARNING);
+            }
+        }
+    }
     // enemy fire last, as half-block pixels in its own colour: nothing may hide it
     for s in game.shots.iter().filter(|s| s.owner != Owner::Player) {
         canvas.pixel(px(s.x - 1.0), px(s.y - 1.0), palette::ENEMY_SHOT);
@@ -137,6 +150,19 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         echoes::pod_words(buf, play, &game.pods);
         for p in &game.sector.portals {
             echoes::portal_label(buf, play, p, &game.sector, game.tick);
+        }
+    }
+}
+
+/// A jammer's interference: Braille rings pulsing out from its dish.
+fn jammer_pulse(canvas: &mut Canvas, e: &crate::game::enemy::Enemy, tick: u64) {
+    let (cx, cy) = (e.x + 6.0, e.y + 1.0);
+    let color = palette::rgb(sprites::side_colors(e.side)[1]);
+    for k in 0..2u64 {
+        let r = ((tick + k * 30) % 60) as f32 / 60.0 * 18.0 + 3.0;
+        for i in 0..48 {
+            let a = i as f32 / 48.0 * std::f32::consts::TAU;
+            canvas.dot((cx + a.cos() * r) as i32, (cy + a.sin() * r * 0.8) as i32, color);
         }
     }
 }
@@ -337,5 +363,21 @@ mod tests {
         let text = frame(&game, 100, 30);
         assert!(text.contains("✕ jammed"), "the gate and the receiver say so");
         assert_eq!(text.matches("???").count(), 2, "the other two gates are blind");
+    }
+
+    #[test]
+    fn every_kind_of_ship_draws() {
+        use crate::game::enemy::{Enemy, Kind, Side};
+        use crate::game::rng::Rng;
+        let mut game = Game::new(3);
+        let play = play_area(Rect::new(0, 0, 120, 34));
+        game.resize(play.width, play.height);
+        let kinds = [Kind::Scout, Kind::Gunship, Kind::Interceptor, Kind::Mine, Kind::Lancer, Kind::Jammer, Kind::Carrier];
+        for (i, k) in kinds.into_iter().enumerate() {
+            let side = if i % 2 == 0 { Side::Amber } else { Side::Jade };
+            game.enemies.push(Enemy::of(k, side, 40.0 + i as f32 * 26.0, 6.0 + (i % 3) as f32 * 30.0, 0.0, &mut Rng::new(1)));
+        }
+        let text = frame(&game, 120, 34);
+        assert!(text.matches('▀').count() + text.matches('▄').count() > 60);
     }
 }

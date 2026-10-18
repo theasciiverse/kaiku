@@ -54,6 +54,8 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
         chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb((255, 230, 120))).add_modifier(Modifier::BOLD));
     } else if let Some((note, _)) = &game.note {
         chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb(palette::SIGNAL[2])));
+    } else if drifting && game.sector.echoes.iter().any(|e| e.jam > 0.0) {
+        chrome::text(buf, x, inner.y, "⚠ jamming · shoot the jammer to clear the echoes", Style::default().fg(palette::rgb((255, 196, 92))).add_modifier(Modifier::BOLD));
     } else if drifting {
         chrome::text(buf, x, inner.y, "echoes in range · type to lock on", Style::default().fg(palette::rgb(palette::SIGNAL[1])).add_modifier(Modifier::ITALIC));
     } else {

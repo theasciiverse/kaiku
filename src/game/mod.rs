@@ -17,7 +17,7 @@ pub mod typing;
 
 use crate::input::Controls;
 use cockpit::Cockpit;
-use enemy::Enemy;
+use enemy::{Action, Enemy, Kind, Side};
 use fx::{Particle, Tint};
 use powerup::{Pod, PodSpawner, PowerUp, Powers};
 use rng::Rng;
@@ -35,6 +35,11 @@ const SHOT_SPEED: f32 = 260.0;
 const ENEMY_SHOT_SPEED: f32 = 70.0;
 /// Chance that a ship fires at the other side rather than at the player.
 const WAR_FIRE: f32 = 0.5;
+/// How much a jammer on screen takes off every echo's clarity.
+const JAM: f32 = 0.3;
+const MINE_SHRAPNEL: usize = 8;
+/// A lancer's beam takes this much shield.
+const BEAM_DAMAGE: f32 = 0.5;
 /// Seconds the field takes to swing round after a portal.
 pub const TURN_TIME: f32 = 1.6;
 /// How long a receiver note stays up, in seconds.
@@ -265,16 +270,30 @@ impl Game {
         // slow time: the war, its fire, echoes and pods all run slow; you don't
         let war_dt = if self.powers.slow > 0.0 { DT * powerup::SLOW_FACTOR } else { DT };
         if self.state == State::Flight && self.sector.phase == Phase::Flight {
-            self.spawner.update(DT, self.w, self.h, &mut self.rng, &mut self.enemies);
+            self.spawner.update(DT, self.w, self.h, self.sector.number, &mut self.rng, &mut self.enemies);
         }
         if self.state == State::Flight {
             self.sector.update(war_dt, self.w, self.h, &mut self.rng);
             self.enter_portal();
         }
+        let target_y = self.ship.center().1;
         for i in 0..self.enemies.len() {
-            if self.enemies[i].update(war_dt, self.w, self.h, &mut self.rng) {
-                self.enemy_fires(i);
+            match self.enemies[i].update(war_dt, self.w, self.h, target_y, &mut self.rng) {
+                Action::None => {}
+                Action::Fire => self.enemy_fires(i),
+                Action::Fan => self.enemy_fan(i),
+                Action::Launch => {
+                    let e = &self.enemies[i];
+                    let (x, y) = (e.x, e.y + e.kind.size().1 / 2.0 - 3.0);
+                    let side = e.side;
+                    self.enemies.push(Enemy::scout(side, x, y, 0.0, &mut self.rng));
+                }
             }
+        }
+        // a jammer on screen scrambles every echo in range
+        let jam = if self.enemies.iter().any(|e| e.kind == Kind::Jammer && e.hp > 0 && e.x < self.w) { JAM } else { 0.0 };
+        for e in &mut self.sector.echoes {
+            e.jam = jam;
         }
         if self.state == State::Flight && self.sector.phase == Phase::Flight {
             let taken = self.taken_letters();
@@ -288,6 +307,14 @@ impl Game {
         self.pods.retain(|p| !p.done);
         shot::update(&mut self.shots, DT, war_dt, self.w, self.h);
         self.collide();
+        // a mine destroyed, by anyone, bursts into shrapnel
+        let bursts: Vec<((f32, f32), Side)> = self.enemies.iter().filter(|e| e.kind == Kind::Mine && e.hp == 0).map(|e| (e.aabb().center(), e.side)).collect();
+        for ((x, y), side) in bursts {
+            for k in 0..MINE_SHRAPNEL {
+                let a = k as f32 / MINE_SHRAPNEL as f32 * std::f32::consts::TAU;
+                self.shots.push(Shot::new(x, y, a.cos() * ENEMY_SHOT_SPEED, a.sin() * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
+            }
+        }
         self.enemies.retain(|e| e.hp > 0 && !e.gone());
         fx::update(&mut self.particles, DT);
         if self.tick.is_multiple_of(30) {
@@ -435,10 +462,29 @@ impl Game {
         self.shots.push(Shot::new(mx, my, dx / len * ENEMY_SHOT_SPEED, dy / len * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
     }
 
+    /// A carrier's salvo: three shots fanned out ahead of it.
+    fn enemy_fan(&mut self, i: usize) {
+        let e = &self.enemies[i];
+        let (mx, my) = e.muzzle();
+        let side = e.side;
+        for a in [-0.35f32, 0.0, 0.35] {
+            let (sin, cos) = a.sin_cos();
+            self.shots.push(Shot::new(mx, my, -cos * ENEMY_SHOT_SPEED, sin * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
+        }
+    }
+
     fn collide(&mut self) {
         let flying = self.state == State::Flight;
         let ship_box = self.ship.aabb();
         let mut hits: Vec<f32> = Vec::new();
+        // lancer beams: a band two dots either side of the row, to the left edge
+        if flying {
+            for b in self.enemies.iter().filter(|e| e.hp > 0).filter_map(Enemy::beam).filter(|b| b.live) {
+                if Aabb::new(0.0, b.y - 2.0, b.x_end, b.y + 2.0).overlaps(&ship_box) {
+                    hits.push(BEAM_DAMAGE);
+                }
+            }
+        }
         for s in self.shots.iter_mut() {
             let owner = s.owner;
             // keep your fire off the pods: a shot pod is lost
@@ -475,7 +521,12 @@ impl Game {
             }
         }
         if flying {
+            // carriers are too big to ram: they just hurt
             for e in self.enemies.iter_mut().filter(|e| e.hp > 0 && e.aabb().overlaps(&ship_box)) {
+                if e.kind == Kind::Carrier {
+                    hits.push(ship::RAM_DAMAGE);
+                    continue;
+                }
                 // a ram destroys the rammer either way
                 e.hp = 0;
                 let (cx, cy) = e.aabb().center();
@@ -681,5 +732,52 @@ mod tests {
         assert_eq!((g.powers.bombs, g.score), (0, 400));
         g.bomb();
         assert_eq!(g.score, 400, "no bombs, no bomb");
+    }
+
+    #[test]
+    fn a_destroyed_mine_bursts_into_shrapnel() {
+        let mut g = game();
+        g.enemies.push(Enemy::of(Kind::Mine, Side::Amber, 100.0, 30.0, 0.0, &mut Rng::new(1)));
+        g.enemies[0].hp = 1;
+        // one tick so it has settled into its bob, then a shot at its heart
+        g.enemies[0].update(DT, g.w, g.h, 0.0, &mut Rng::new(1));
+        let c = g.enemies[0].aabb().center();
+        g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Player));
+        g.update(&Controls::default());
+        assert_eq!(g.shots.iter().filter(|s| s.owner == Owner::Enemy(Side::Amber)).count(), MINE_SHRAPNEL);
+    }
+
+    #[test]
+    fn a_live_beam_hurts_and_a_warning_does_not() {
+        let mut g = game();
+        // a lancer on the ship's row
+        let row = g.ship.center().1 - 4.0;
+        g.enemies.push(Enemy::of(Kind::Lancer, Side::Jade, 120.0, row, 120.0, &mut Rng::new(1)));
+        let mut warned = false;
+        for _ in 0..60 * 3 {
+            g.update(&Controls::default());
+            if g.enemies[0].beam().is_some_and(|b| !b.live) {
+                warned = true;
+                assert_eq!(g.ship.shield, 1.0, "the warning line is harmless");
+            }
+        }
+        assert!(warned && g.ship.shield < 1.0, "then the beam hits");
+    }
+
+    #[test]
+    fn a_jammer_scrambles_echoes_until_it_is_shot_down() {
+        let mut g = game();
+        for _ in 0..60 * 11 {
+            g.update(&Controls::default());
+            g.ship.grace = 1.0;
+        }
+        g.enemies.push(Enemy::of(Kind::Jammer, Side::Amber, 120.0, 2.0, 120.0, &mut Rng::new(1)));
+        g.update(&Controls::default());
+        assert!(!g.sector.echoes.is_empty() && g.sector.echoes.iter().all(|e| e.jam > 0.0));
+        let jammer = g.enemies.iter().position(|e| e.kind == Kind::Jammer).unwrap();
+        g.enemies[jammer].hp = 0;
+        g.update(&Controls::default());
+        g.update(&Controls::default());
+        assert!(g.sector.echoes.iter().all(|e| e.jam == 0.0));
     }
 }
