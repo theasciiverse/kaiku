@@ -1,16 +1,36 @@
 //! Bullets, in dots.
 
+use super::enemy::Side;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Owner {
+    Player,
+    /// Hurts the player and the other side's ships, never its own.
+    Enemy(Side),
+}
+
 #[derive(Clone, Debug)]
 pub struct Shot {
     pub x: f32,
     pub y: f32,
-    /// dots per second (positive: rightwards, the player's)
+    /// dots per second
     pub vx: f32,
+    pub vy: f32,
+    pub owner: Owner,
+    /// set when it has hit something
+    pub spent: bool,
 }
 
-pub fn update(shots: &mut Vec<Shot>, dt: f32, w: f32) {
+impl Shot {
+    pub fn new(x: f32, y: f32, vx: f32, vy: f32, owner: Owner) -> Shot {
+        Shot { x, y, vx, vy, owner, spent: false }
+    }
+}
+
+pub fn update(shots: &mut Vec<Shot>, dt: f32, w: f32, h: f32) {
     for s in shots.iter_mut() {
         s.x += s.vx * dt;
+        s.y += s.vy * dt;
     }
-    shots.retain(|s| s.x >= -4.0 && s.x <= w + 4.0);
+    shots.retain(|s| !s.spent && s.x >= -4.0 && s.x <= w + 4.0 && s.y >= -4.0 && s.y <= h + 4.0);
 }

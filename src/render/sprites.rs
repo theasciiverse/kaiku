@@ -1,7 +1,8 @@
 //! Half-block pixel art. One character is one pixel; `.` is transparent.
 
 use super::canvas::Canvas;
-use super::palette;
+use super::palette::{self, Rgb};
+use crate::game::enemy::Side;
 
 /// The player's ship, nose to the right: 9×5 pixels (`SHIP_W`×`SHIP_H` dots).
 pub const SHIP: [&str; 5] = [
@@ -22,7 +23,42 @@ pub const POWERUPS: [(&str, [&str; 4]); 6] = [
     ("slow", ["ccccc", ".c.c.", ".c.c.", "ccccc"]),
 ];
 
-fn color(c: char, tick: u64) -> Option<(u8, u8, u8)> {
+/// Enemy ships face left. `a` hull, `A` highlight, `e` engine, `k` dark.
+pub const SCOUT: [&str; 3] = ["..aa.", "kAAae", "..aa."];
+pub const GUNSHIP: [&str; 5] = ["...aa..", ".aaAAae", "kAAAAae", ".aaAAae", "...aa.."];
+
+/// Hull, highlight and engine colours of a side.
+pub fn side_colors(side: Side) -> [Rgb; 3] {
+    match side {
+        Side::Amber => [(214, 120, 40), (255, 196, 92), (255, 90, 40)],
+        Side::Jade => [(40, 168, 120), (140, 250, 190), (90, 255, 230)],
+    }
+}
+
+/// Draws an enemy; `flash` turns it white for the moment it is hit.
+pub fn draw_enemy(canvas: &mut Canvas, art: &[&str], side: Side, flash: bool, x: i32, y: i32) {
+    let [hull, high, engine] = side_colors(side);
+    draw_with(canvas, art, x, y, |c| match c {
+        _ if flash && c != '.' => Some((255, 255, 255)),
+        'a' => Some(hull),
+        'A' => Some(high),
+        'e' => Some(engine),
+        'k' => Some((60, 50, 74)),
+        _ => None,
+    });
+}
+
+fn draw_with(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, color: impl Fn(char) -> Option<Rgb>) {
+    for (row, line) in art.iter().enumerate() {
+        for (col, ch) in line.chars().enumerate() {
+            if let Some(c) = color(ch) {
+                canvas.pixel(x + col as i32, y + row as i32, palette::rgb(c));
+            }
+        }
+    }
+}
+
+fn color(c: char, tick: u64) -> Option<Rgb> {
     Some(match c {
         'c' => (90, 200, 255),
         'b' => (70, 96, 190),
@@ -43,11 +79,5 @@ pub fn draw(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, tick: u64) {
 /// Draws a sprite faded towards the chrome background by `fade` (0 = full
 /// colour): power-ups the ship doesn't have show as dim silhouettes.
 pub fn draw_faded(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, tick: u64, fade: f32) {
-    for (row, line) in art.iter().enumerate() {
-        for (col, ch) in line.chars().enumerate() {
-            if let Some(c) = color(ch, tick) {
-                canvas.pixel(x + col as i32, y + row as i32, palette::rgb(palette::lerp(c, palette::CHROME_BG_RGB, fade)));
-            }
-        }
-    }
+    draw_with(canvas, art, x, y, |ch| color(ch, tick).map(|c| palette::lerp(c, palette::CHROME_BG_RGB, fade)));
 }

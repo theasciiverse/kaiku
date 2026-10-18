@@ -65,9 +65,13 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         let mut steps = 0;
         while now >= next && steps < 5 {
             if !input.confirm_quit {
+                // Enter on the game-over screen flies again
+                if game.state == game::State::Over && input.bomb {
+                    game.restart();
+                }
                 game.update(&input.controls(now));
             }
-            // nothing types yet in M0
+            // nothing types yet: echoes and power-ups come in M2 and M4
             input.typed.clear();
             input.drop_lock = false;
             input.bomb = false;

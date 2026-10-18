@@ -16,6 +16,8 @@ pub const RAMP: [Rgb; 3] = [(255, 96, 168), (154, 102, 255), (72, 140, 255)];
 
 pub const STAR: [Color; 3] = [Color::Rgb(70, 74, 110), Color::Rgb(130, 136, 180), Color::Rgb(220, 224, 255)];
 pub const SHOT: Color = Color::Rgb(255, 226, 120);
+/// Reserved for enemy fire: no sprite, word or decoration uses it.
+pub const ENEMY_SHOT: Color = Color::Rgb(255, 54, 64);
 
 pub fn rgb(c: Rgb) -> Color {
     Color::Rgb(c.0, c.1, c.2)

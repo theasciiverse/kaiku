@@ -6,7 +6,10 @@ mod palette;
 mod panel;
 mod sprites;
 
-use crate::game::Game;
+use crate::game::enemy::Kind;
+use crate::game::fx::Tint;
+use crate::game::shot::Owner;
+use crate::game::{Game, State};
 use crate::input::Input;
 use canvas::Canvas;
 use ratatui::layout::Rect;
@@ -35,25 +38,56 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     chrome::border(buf, l.frame);
     panel::receiver(buf, l.receiver, game.tick);
     panel::powerups(buf, l.powerups, &[], game.tick);
-    chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, input.mode_note());
+    chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.score, input.mode_note());
 
     let mut canvas = Canvas::new(play.width, play.height);
     for s in &game.stars.stars {
         canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
     }
-    for s in &game.shots {
+    for p in &game.particles {
+        canvas.dot(p.x as i32, p.y as i32, particle_color(p.tint, p.life / p.max));
+    }
+    for s in game.shots.iter().filter(|s| s.owner == Owner::Player) {
         for i in 0..3 {
             canvas.dot(s.x as i32 - i, s.y as i32, palette::SHOT);
         }
     }
     // dots to half-block pixels: 2×2 dots each
-    let (sx, sy) = ((game.ship.x / 2.0).round() as i32, (game.ship.y / 2.0).round() as i32);
-    sprites::draw(&mut canvas, &sprites::SHIP, sx, sy, game.tick);
+    let px = |v: f32| (v / 2.0).round() as i32;
+    for e in &game.enemies {
+        let art: &[&str] = match e.kind {
+            Kind::Scout => &sprites::SCOUT,
+            Kind::Gunship => &sprites::GUNSHIP,
+        };
+        sprites::draw_enemy(&mut canvas, art, e.side, e.flash > 0.0, px(e.x), px(e.y));
+    }
+    // the ship blinks while invulnerable
+    let blink = game.ship.grace > 0.0 && (game.tick / 4).is_multiple_of(2);
+    if game.state == State::Flight && !blink {
+        sprites::draw(&mut canvas, &sprites::SHIP, px(game.ship.x), px(game.ship.y), game.tick);
+    }
+    // enemy fire last, as half-block pixels in its own colour: nothing may hide it
+    for s in game.shots.iter().filter(|s| s.owner != Owner::Player) {
+        canvas.pixel(px(s.x - 1.0), px(s.y - 1.0), palette::ENEMY_SHOT);
+    }
     canvas.blit(buf, play, palette::SPACE);
 
+    if game.state == State::Over && !input.confirm_quit {
+        chrome::question(buf, play, &format!("SIGNAL LOST  ·  score {}  ·  enter to fly again", game.score));
+    }
     if input.confirm_quit {
         chrome::question(buf, play, "Quit Kaiku?  y / n");
     }
+}
+
+fn particle_color(tint: Tint, life: f32) -> ratatui::style::Color {
+    let hot = match tint {
+        Tint::Side(side) => sprites::side_colors(side)[1],
+        Tint::Player => (140, 220, 255),
+        Tint::Spark => (255, 236, 160),
+    };
+    // fade into the dark as the particle dies
+    palette::rgb(palette::lerp((40, 30, 60), hot, life))
 }
 
 #[cfg(test)]
@@ -69,8 +103,10 @@ mod tests {
         let mut term = Terminal::new(TestBackend::new(80, 24)).unwrap();
         let play = play_area(Rect::new(0, 0, 80, 24));
         game.resize(play.width, play.height);
-        for _ in 0..40 {
-            game.update(&Controls { dx: 1, dy: 0, fire: true });
+        // twelve seconds of flying up and down, firing, so the war has arrived
+        for t in 0..720 {
+            let dy = if (t / 60) % 2 == 0 { 1 } else { -1 };
+            game.update(&Controls { dx: 0, dy, fire: true });
         }
         let input = Input::with_mode(Mode::Timing);
         term.draw(|f| draw(f, &game, &input)).unwrap();
