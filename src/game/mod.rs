@@ -1,5 +1,6 @@
 //! The simulation: no terminal in here, so it runs headless in tests.
 
+pub mod chatter;
 pub mod cockpit;
 pub mod echo;
 pub mod enemy;
@@ -18,6 +19,7 @@ pub mod terrain;
 pub mod typing;
 
 use crate::input::Controls;
+use chatter::Chatter;
 use cockpit::Cockpit;
 use enemy::{Action, Enemy, Kind, Side};
 use fx::{Particle, Tint};
@@ -122,6 +124,7 @@ pub struct Game {
     pub tick: u64,
     pub sector: Sector,
     pub terrain: Terrain,
+    pub chatter: Chatter,
     pub typing: Typing,
     pub pods: Vec<Pod>,
     pub powers: Powers,
@@ -169,6 +172,7 @@ impl Game {
             tick: 0,
             sector,
             terrain,
+            chatter: Chatter::new(),
             typing: Typing::default(),
             pods: Vec::new(),
             powers: Powers::default(),
@@ -287,6 +291,7 @@ impl Game {
             self.stats.seconds += DT;
             self.terrain.update(DT);
             self.scrape_walls();
+            self.chatter.update(DT, &mut self.rng);
         }
         for note in [&mut self.note, &mut self.power_note] {
             if let Some((_, t)) = note {

@@ -54,6 +54,12 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
         chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb((255, 230, 120))).add_modifier(Modifier::BOLD));
     } else if let Some((note, _)) = &game.note {
         chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb(palette::SIGNAL[2])));
+    } else if let Some(line) = game.chatter.line().filter(|_| !drifting) {
+        // the war, talking to itself
+        let color = palette::rgb(super::sprites::side_colors(line.side)[1]);
+        let x = chrome::text(buf, x, inner.y, line.callsign, Style::default().fg(color).add_modifier(Modifier::BOLD));
+        let cells: Vec<(char, Style)> = format!("  {}", line.words).chars().map(|c| (c, Style::default().fg(DIM).add_modifier(Modifier::ITALIC))).collect();
+        echoes::put_cells(buf, x as i32, inner.y, &cells, clip);
     } else if drifting && game.sector.echoes.iter().any(|e| e.jam > 0.0) {
         chrome::text(buf, x, inner.y, "⚠ jamming · shoot the jammer to clear the echoes", Style::default().fg(palette::rgb((255, 196, 92))).add_modifier(Modifier::BOLD));
     } else if drifting {
