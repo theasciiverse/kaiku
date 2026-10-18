@@ -114,7 +114,7 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         echoes::portal(canvas, p, &game.sector, game.tick);
     }
     for p in &game.pods {
-        sprites::draw_pod(canvas, p.kind, px(p.x), px(p.y), game.tick);
+        sprites::draw_pod(canvas, p.kind, p.hp, p.flash > 0.0 && p.hp < crate::game::powerup::POD_HP, px(p.x), px(p.y), game.tick);
     }
     if let Some(d) = &game.powers.drone {
         sprites::draw_drone(canvas, px(d.x), px(d.y), game.tick);

@@ -54,6 +54,8 @@ pub fn words(sector: u32) -> Vec<&'static str> {
 pub const POD_W: f32 = 8.0;
 pub const POD_H: f32 = 6.0;
 const DRIFT: f32 = 16.0;
+/// Shots a pod survives: enough to notice and ease off the trigger.
+pub const POD_HP: u8 = 3;
 const DRIFT_LOCKED: f32 = 8.0;
 
 #[derive(Clone, Debug)]
@@ -68,13 +70,15 @@ pub struct Pod {
     pub y: f32,
     base_y: f32,
     age: f32,
+    /// hits it can still take before it's lost
+    pub hp: u8,
     /// claimed, shot or drifted off
     pub done: bool,
 }
 
 impl Pod {
     pub fn new(id: u32, kind: PowerUp, word: &'static str, x: f32, y: f32) -> Pod {
-        Pod { id, kind, word, progress: 0, locked: false, flash: 0.0, x, y, base_y: y, age: 0.0, done: false }
+        Pod { id, kind, word, progress: 0, locked: false, flash: 0.0, x, y, base_y: y, age: 0.0, hp: POD_HP, done: false }
     }
 
     pub fn next_letter(&self) -> Option<char> {
@@ -90,6 +94,16 @@ impl Pod {
             self.flash = 0.15;
             false
         }
+    }
+
+    /// A shot hits it; returns true when that one breaks it.
+    pub fn shot(&mut self) -> bool {
+        self.hp = self.hp.saturating_sub(1);
+        self.flash = 0.1;
+        if self.hp == 0 {
+            self.done = true;
+        }
+        self.done
     }
 
     pub fn claimed(&self) -> bool {

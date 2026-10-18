@@ -39,9 +39,12 @@ pub fn power_color(kind: PowerUp) -> Rgb {
     }
 }
 
-pub fn draw_pod(canvas: &mut Canvas, kind: PowerUp, x: i32, y: i32, tick: u64) {
-    // the shell glints as it turns
-    let shell = if (tick / 10).is_multiple_of(3) { (220, 236, 255) } else { (120, 150, 190) };
+/// `hp` of `POD_HP` left: a hit shell darkens, so you see it cracking.
+pub fn draw_pod(canvas: &mut Canvas, kind: PowerUp, hp: u8, flash: bool, x: i32, y: i32, tick: u64) {
+    // the shell glints as it turns, and dims with every hit
+    let bright = if (tick / 10).is_multiple_of(3) { (220, 236, 255) } else { (120, 150, 190) };
+    let wear = 1.0 - hp as f32 / crate::game::powerup::POD_HP as f32;
+    let shell = if flash { (255, 255, 255) } else { palette::lerp(bright, (60, 40, 50), wear * 0.8) };
     let core = power_color(kind);
     draw_with(canvas, &POD, x, y, |c| match c {
         'o' => Some(shell),

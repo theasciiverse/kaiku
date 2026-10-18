@@ -605,14 +605,14 @@ impl Game {
                 }
             }
         }
-        for s in self.shots.iter_mut() {
+        for s in self.shots.iter_mut().filter(|s| !s.spent) {
             let owner = s.owner;
             // keep your fire off the pods: a shot pod is lost
             if owner == Owner::Player {
                 if let Some(p) = self.pods.iter_mut().find(|p| !p.done && p.aabb().contains(s.x, s.y)) {
-                    p.done = true;
                     s.spent = true;
-                    fx::burst(&mut self.particles, s.x, s.y, 8, 30.0, Tint::Spark, &mut self.rng);
+                    let n = if p.shot() { 10 } else { 3 };
+                    fx::burst(&mut self.particles, s.x, s.y, n, 30.0, Tint::Spark, &mut self.rng);
                     continue;
                 }
             }
@@ -842,9 +842,12 @@ mod tests {
         }
         assert!(g.powers.rapid && g.pods.is_empty());
         g.pods.push(Pod::new(10_002, PowerUp::Bomb, "glad", 100.0, 20.0));
-        g.shots.push(Shot::new(102.0, 22.0, 0.0, 0.0, Owner::Player));
-        g.collide();
-        assert!(g.pods[0].done, "a shot pod is lost");
+        for k in 0..powerup::POD_HP {
+            assert!(!g.pods[0].done, "it survives {k} hits");
+            g.shots.push(Shot::new(102.0, 22.0, 0.0, 0.0, Owner::Player));
+            g.collide();
+        }
+        assert!(g.pods[0].done, "a shot pod is lost in the end");
     }
 
     #[test]
