@@ -73,7 +73,8 @@ Each milestone ends playable and committed.
    arrival home.
 5. **M4 — Power-ups:** word pods following the keyboard-row curve, and the
    power-up effects.
-6. **M5 — Intro scene:** the receiver repair tutorial.
+6. **M5 — Intro:** the Metroid-style opening story crawl, then the
+   receiver repair tutorial.
 7. **Then:** playtest. The open question is whether the mix of flying,
    shooting and typing is fun.
 

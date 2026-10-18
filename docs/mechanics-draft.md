@@ -134,6 +134,12 @@ Enemy fleets don't carry words; only **power-ups** and **echoes** do.
 
 ## Intro scene (the tutorial)
 
+**Opening passage, Metroid-style:** before the cockpit, an old-school story
+crawl in the manner of the NES Metroid intro. The story text (the war, the
+surge, the ship thrown off course) types itself out letter by letter on a
+dark starfield, with a small typewriter tick. Any key skips it. Then the
+cockpit scene below begins.
+
 1. Dark cockpit, static. The receiver is broken.
 2. The player types short repair commands (`reboot`, `tune`, `scan`), which
    is gentle first typing.
