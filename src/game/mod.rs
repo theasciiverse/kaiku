@@ -383,9 +383,9 @@ impl Game {
         let line = match (truth, blind) {
             (true, _) if d == 0 => "the echoes were true · home".to_string(),
             (true, false) => format!("true echo · closer to home · {d} jumps left"),
-            (true, true) => format!("a lucky blind jump · {d} jumps left"),
+            (true, true) => format!("a lucky blind gate · {d} jumps left"),
             (false, false) => format!("the echo was jammed · a detour · {d} jumps left"),
-            (false, true) => format!("a blind jump, off course · {d} jumps left"),
+            (false, true) => format!("a blind gate, off course · {d} jumps left"),
         };
         log::info!("jump from sector {} truth={truth} to {} distance={d}", self.sector.number, self.route.here().name);
         self.note = Some((line, NOTE_TIME));

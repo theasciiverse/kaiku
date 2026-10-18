@@ -29,7 +29,8 @@ of ideas, not a spec. Don't hold the design to them.
   and then into full clear while still blinking and garbled. Typing it out
   makes it clear, letter by letter. **The echoes are what guide you home:**
   each one you type points the way to the next portal or tunnel.
-- **Wrong portal = a longer path home,** never game over. (Proposed: the
+- **Three gates at the end of every sector; only one gets you closer to
+  home.** Wrong gate = a longer path home, never game over. (Proposed: the
   war's jamming sends false echoes alongside the true one.)
 - **A stage map between stages** shows your progress home: where you are,
   the jumps taken, how far is left.

@@ -75,7 +75,8 @@ Each milestone ends playable and committed.
    power-up effects.
 6. **M5 — Intro:** the Metroid-style opening story crawl, then the
    receiver repair tutorial.
-7. **Then:** playtest. The open question is whether the mix of flying,
+7. **Later:** the cockpit scene needs more work (noted 2026-10-18).
+8. **Then:** playtest. The open question is whether the mix of flying,
    shooting and typing is fun.
 
 ## Tests

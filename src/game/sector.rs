@@ -1,6 +1,6 @@
 //! One sector: a tunnel between two portals. The war flies through it; partway
 //! along, the receiver catches echoes (one true, the others jammed); at the end
-//! a portal opens for each decoded echo, and flying into one is the jump.
+//! three gates open, one per echo, and flying into one is the jump.
 
 use super::echo::{self, Echo, EchoState, Transmission};
 use super::rng::Rng;
@@ -10,6 +10,10 @@ use super::Aabb;
 const ECHO_TIMES: [f32; 3] = [10.0, 22.0, 34.0];
 /// When the portals open (and the war stops sending ships).
 const PORTALS_AT: f32 = 58.0;
+/// Gates at the end of every sector: one per echo, one of them true.
+const GATES: usize = ECHO_TIMES.len();
+/// How a blind gate glows: dim, and the same for all of them.
+const BLIND_GLOW: f32 = 0.15;
 /// Portal size in dots: 6×10 half-block pixels.
 pub const PORTAL_W: f32 = 12.0;
 pub const PORTAL_H: f32 = 20.0;
@@ -26,7 +30,7 @@ pub struct Portal {
     pub y: f32,
     /// where it stops drifting in
     rest_x: f32,
-    /// the decoded echo it answers to; `None` for a blind portal
+    /// the decoded echo it answers to; `None` for a blind gate
     pub echo: Option<u32>,
     pub truth: bool,
     pub clarity: f32,
@@ -111,22 +115,34 @@ impl Sector {
         }
     }
 
-    /// One portal per decoded echo, spread down the right side; with none
-    /// decoded, a single blind portal that may lead anywhere.
+    /// Three gates, always: one per echo, and only the true echo's gate leads
+    /// nearer home. A gate whose echo was decoded shows its text and glows
+    /// with its clarity; the others are blind (`???`), all alike.
     fn open_portals(&mut self, w: f32, h: f32, rng: &mut Rng) {
         self.phase = Phase::Portals;
-        let decoded: Vec<&Echo> = self.echoes.iter().filter(|e| e.state == EchoState::Decoded).collect();
-        let n = decoded.len().max(1);
+        let mut gates: Vec<(Option<u32>, bool, f32)> = self
+            .echoes
+            .iter()
+            .map(|e| match e.state {
+                EchoState::Decoded => (Some(e.id), e.truth, e.clarity),
+                _ => (None, e.truth, BLIND_GLOW),
+            })
+            .collect();
+        // an echo that never arrived still leaves a gate, a false one
+        while gates.len() < GATES {
+            gates.push((None, false, BLIND_GLOW));
+        }
+        let n = gates.len();
         let gap = (h - PORTAL_H * n as f32) / (n as f32 + 1.0);
-        for i in 0..n {
+        // shuffle, so a gate's place says nothing about its echo
+        for i in (1..n).rev() {
+            gates.swap(i, (rng.unit() * (i + 1) as f32) as usize % (i + 1));
+        }
+        for (i, (echo, truth, clarity)) in gates.into_iter().enumerate() {
             let y = gap + i as f32 * (PORTAL_H + gap);
-            let (echo, truth, clarity) = match decoded.get(i) {
-                Some(e) => (Some(e.id), e.truth, e.clarity),
-                None => (None, rng.unit() < 1.0 / 3.0, 0.1),
-            };
             self.portals.push(Portal { x: w + 4.0, y, rest_x: w - PORTAL_W - 16.0, echo, truth, clarity });
         }
-        log::info!("portals open: {n}");
+        log::info!("gates open: {n}");
     }
 
     pub fn echo(&self, id: u32) -> Option<&Echo> {
@@ -156,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn decoded_echoes_become_portals_and_none_means_one_blind_portal() {
+    fn three_gates_always_one_true_and_decoded_ones_are_named() {
         let mut rng = Rng::new(12);
         let mut s = Sector::new(1, 0.0, &mut rng);
         run(&mut s, 12.0, &mut rng);
@@ -166,12 +182,14 @@ mod tests {
         }
         run(&mut s, 50.0, &mut rng);
         assert_eq!(s.phase, Phase::Portals);
-        assert_eq!(s.portals.len(), 1);
-        assert_eq!(s.portals[0].echo, Some(s.echoes[0].id));
+        assert_eq!(s.portals.len(), 3);
+        assert_eq!(s.portals.iter().filter(|p| p.truth).count(), 1, "only one leads home");
+        let named: Vec<_> = s.portals.iter().filter_map(|p| p.echo).collect();
+        assert_eq!(named, vec![s.echoes[0].id], "only the decoded echo names its gate");
 
         let mut blind = Sector::new(2, 0.0, &mut rng);
         run(&mut blind, 60.0, &mut rng);
-        assert_eq!(blind.portals.len(), 1);
-        assert_eq!(blind.portals[0].echo, None);
+        assert_eq!(blind.portals.len(), 3);
+        assert!(blind.portals.iter().all(|p| p.echo.is_none() && p.clarity == BLIND_GLOW), "undecoded gates all look alike");
     }
 }

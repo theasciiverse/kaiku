@@ -47,9 +47,10 @@ A **sector** is one stage: one tunnel between two portals.
    typing. Each correct letter locks in clear. Only the letters are typed; spaces and
    punctuation fill themselves in (Space is the gun). A decoded echo shows its
    **clarity**, which is how strongly it points home.
-5. **Portals.** At the end of the sector, one portal appears per decoded
-   echo, each tagged with its echo. Fly into one. If you decoded none, a
-   single random portal opens. A blind jump is legal, just unlucky.
+5. **Gates.** At the end of every sector three gates open, one per echo,
+   and **only one gets you closer to home**. A gate whose echo you decoded
+   shows the echo's text and glows with its clarity; the others are blind
+   (`???`) and look alike. Fly into one. Decoding is how you choose well.
 6. **The turn.** Entering a portal swings the whole field round in a Braille
    rotation animation. Play stays horizontal; the new tunnel's colours,
    walls and heading show where you are going.
