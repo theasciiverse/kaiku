@@ -9,7 +9,6 @@ pub const SHIP_W: f32 = 18.0;
 pub const SHIP_H: f32 = 10.0;
 /// Dots per second. A dot is about square on a 1:2 cell, so one speed serves both axes.
 const SPEED: f32 = 80.0;
-const FIRE_INTERVAL: f32 = 0.11;
 /// Shield lost per hit: a bullet takes a quarter, a ram half.
 pub const BULLET_DAMAGE: f32 = 0.25;
 pub const RAM_DAMAGE: f32 = 0.5;
@@ -43,8 +42,9 @@ impl Ship {
         Ship { x: 8.0, y: (h - SHIP_H) / 2.0, shield: 1.0, lives: 3, grace: 0.0, cooldown: 0.0 }
     }
 
-    /// Moves within the field; returns true when the gun fires this tick.
-    pub fn update(&mut self, c: &Controls, dt: f32, w: f32, h: f32) -> bool {
+    /// Moves within the field; returns true when the gun fires this tick, at
+    /// most once every `interval` seconds.
+    pub fn update(&mut self, c: &Controls, dt: f32, w: f32, h: f32, interval: f32) -> bool {
         let (mut dx, mut dy) = (c.dx as f32, c.dy as f32);
         if dx != 0.0 && dy != 0.0 {
             dx *= std::f32::consts::FRAC_1_SQRT_2;
@@ -56,7 +56,7 @@ impl Ship {
         self.grace = (self.grace - dt).max(0.0);
         self.cooldown -= dt;
         if c.fire && self.cooldown <= 0.0 {
-            self.cooldown = FIRE_INTERVAL;
+            self.cooldown = interval;
             return true;
         }
         false

@@ -40,8 +40,8 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     chrome::header(buf, l.header, game.tick, signal(game));
     chrome::border(buf, l.frame);
     panel::receiver(buf, l.receiver, game);
-    panel::powerups(buf, l.powerups, &[], game.tick);
-    chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.score, input.mode_note());
+    panel::powerups(buf, l.powerups, &game.powers.owned(), game.tick);
+    chrome::hud(buf, l.hud, game.ship.shield, game.ship.lives, game.powers.bombs, game.score, input.mode_note());
 
     let mut canvas = Canvas::new(play.width, play.height);
     let bg = palette::tunnel(game.sector.number);
@@ -107,6 +107,21 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
     for p in &game.sector.portals {
         echoes::portal(canvas, p, game.tick);
     }
+    for p in &game.pods {
+        sprites::draw_pod(canvas, p.kind, px(p.x), px(p.y), game.tick);
+    }
+    if let Some(d) = &game.powers.drone {
+        sprites::draw_drone(canvas, px(d.x), px(d.y), game.tick);
+    }
+    // a smart bomb: a ring racing out from the ship
+    if game.bomb_t < 0.6 {
+        let (cx, cy) = game.ship.center();
+        let r = game.bomb_t / 0.6 * game.w;
+        for i in 0..360 {
+            let a = i as f32 / 360.0 * std::f32::consts::TAU;
+            canvas.dot((cx + a.cos() * r) as i32, (cy + a.sin() * r * 0.7) as i32, palette::rgb(sprites::power_color(crate::game::powerup::PowerUp::Bomb)));
+        }
+    }
     // the ship blinks while invulnerable
     let blink = game.ship.grace > 0.0 && (game.tick / 4).is_multiple_of(2);
     if game.state != State::Over && !blink {
@@ -119,6 +134,7 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
     canvas.blit(buf, play, bg);
     if game.state != State::Home {
         echoes::draw(buf, play, &game.sector.echoes, game.tick);
+        echoes::pod_words(buf, play, &game.pods);
         for p in &game.sector.portals {
             echoes::portal_label(buf, play, p, &game.sector.echoes);
         }

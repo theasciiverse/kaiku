@@ -50,6 +50,8 @@ pub fn receiver(buf: &mut Buffer, area: Rect, game: &Game) {
         let cells = echoes::cells(e, game.tick);
         echoes::put_cells(buf, x as i32, inner.y, &cells, clip);
         meter(buf, x + cells.len() as u16 + 2, inner.y, e.clarity, clip);
+    } else if let Some((note, _)) = &game.power_note {
+        chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb((255, 230, 120))).add_modifier(Modifier::BOLD));
     } else if let Some((note, _)) = &game.note {
         chrome::text(buf, x, inner.y, note, Style::default().fg(palette::rgb(palette::SIGNAL[2])));
     } else if drifting {

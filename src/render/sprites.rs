@@ -3,6 +3,7 @@
 use super::canvas::Canvas;
 use super::palette::{self, Rgb};
 use crate::game::enemy::Side;
+use crate::game::powerup::PowerUp;
 
 /// The player's ship, nose to the right: 9×5 pixels (`SHIP_W`×`SHIP_H` dots).
 pub const SHIP: [&str; 5] = [
@@ -22,6 +23,36 @@ pub const POWERUPS: [(&str, [&str; 4]); 6] = [
     ("drone", [".cc..", "cwwc.", "cwwc.", ".cc.."]),
     ("slow", ["ccccc", ".c.c.", ".c.c.", "ccccc"]),
 ];
+
+/// A power-up pod: a capsule whose core shows what it holds. 4×3 pixels.
+pub const POD: [&str; 3] = [".oo.", "oXXo", ".oo."];
+/// The escort drone, nose right. 4×2 pixels.
+pub const DRONE: [&str; 2] = [".cw.", "cbwy"];
+
+/// The colour a power-up shows in its pod and its word.
+pub fn power_color(kind: PowerUp) -> Rgb {
+    match kind {
+        PowerUp::Spread | PowerUp::Rapid => (255, 230, 120),
+        PowerUp::Shield | PowerUp::Slow => (90, 200, 255),
+        PowerUp::Bomb => (255, 96, 168),
+        PowerUp::Drone => (226, 232, 255),
+    }
+}
+
+pub fn draw_pod(canvas: &mut Canvas, kind: PowerUp, x: i32, y: i32, tick: u64) {
+    // the shell glints as it turns
+    let shell = if (tick / 10).is_multiple_of(3) { (220, 236, 255) } else { (120, 150, 190) };
+    let core = power_color(kind);
+    draw_with(canvas, &POD, x, y, |c| match c {
+        'o' => Some(shell),
+        'X' => Some(core),
+        _ => None,
+    });
+}
+
+pub fn draw_drone(canvas: &mut Canvas, x: i32, y: i32, tick: u64) {
+    draw(canvas, &DRONE, x, y, tick);
+}
 
 /// Enemy ships face left. `a` hull, `A` highlight, `e` engine, `k` dark.
 pub const SCOUT: [&str; 3] = ["..aa.", "kAAae", "..aa."];

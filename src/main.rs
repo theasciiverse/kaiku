@@ -77,6 +77,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                         game::State::Over | game::State::Home => game.restart(),
                         game::State::Map => game.fly_on(),
                         game::State::Cockpit => game.skip_cockpit(),
+                        game::State::Flight => game.bomb(),
                         _ => {}
                     }
                 }

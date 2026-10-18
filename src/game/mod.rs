@@ -5,6 +5,7 @@ pub mod echo;
 pub mod enemy;
 pub mod fx;
 pub mod intro;
+pub mod powerup;
 pub mod rng;
 pub mod route;
 pub mod sector;
@@ -18,6 +19,7 @@ use crate::input::Controls;
 use cockpit::Cockpit;
 use enemy::Enemy;
 use fx::{Particle, Tint};
+use powerup::{Pod, PodSpawner, PowerUp, Powers};
 use rng::Rng;
 use route::Route;
 use sector::{Phase, Sector};
@@ -25,7 +27,7 @@ use ship::{Hit, Ship};
 use shot::{Owner, Shot};
 use spawn::Spawner;
 use stars::Starfield;
-use typing::{Key, Typing};
+use typing::{Key, Target, Typing};
 
 /// Fixed simulation step: 60 Hz, as in Entity.
 pub const DT: f32 = 1.0 / 60.0;
@@ -96,6 +98,13 @@ pub struct Game {
     pub tick: u64,
     pub sector: Sector,
     pub typing: Typing,
+    pub pods: Vec<Pod>,
+    pub powers: Powers,
+    /// seconds since the last smart bomb, for its flash
+    pub bomb_t: f32,
+    /// the power-up just claimed or lost, and seconds left to show it
+    pub power_note: Option<(String, f32)>,
+    pods_spawner: PodSpawner,
     pub route: Route,
     /// seconds spent in the current state (Turn, Map, Home)
     pub state_t: f32,
@@ -129,6 +138,11 @@ impl Game {
             tick: 0,
             sector,
             typing: Typing::default(),
+            pods: Vec::new(),
+            powers: Powers::default(),
+            bomb_t: 10.0,
+            power_note: None,
+            pods_spawner: PodSpawner::default(),
             route,
             state_t: 0.0,
             turn_dir: 1.0,
@@ -220,29 +234,59 @@ impl Game {
                 self.leave_cockpit();
             }
         }
-        if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h) {
+        self.bomb_t += DT;
+        self.powers.tick(DT);
+        for note in [&mut self.note, &mut self.power_note] {
+            if let Some((_, t)) = note {
+                *t -= DT;
+                if *t <= 0.0 {
+                    *note = None;
+                }
+            }
+        }
+        let interval = if self.powers.rapid { 0.06 } else { 0.11 };
+        if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h, interval) {
             let (x, y) = self.ship.nose();
             self.shots.push(Shot::new(x, y, SHOT_SPEED, 0.0, Owner::Player));
+            if self.powers.spread {
+                for vy in [-45.0, 45.0] {
+                    self.shots.push(Shot::new(x - 2.0, y, SHOT_SPEED * 0.95, vy, Owner::Player));
+                }
+            }
         }
+        if self.state == State::Flight {
+            let station = (self.ship.x, self.ship.y);
+            if let Some(d) = &mut self.powers.drone {
+                if d.update(DT, station) {
+                    self.shots.push(Shot::new(d.x + 6.0, d.y + 2.0, SHOT_SPEED, 0.0, Owner::Player));
+                }
+            }
+        }
+        // slow time: the war, its fire, echoes and pods all run slow; you don't
+        let war_dt = if self.powers.slow > 0.0 { DT * powerup::SLOW_FACTOR } else { DT };
         if self.state == State::Flight && self.sector.phase == Phase::Flight {
             self.spawner.update(DT, self.w, self.h, &mut self.rng, &mut self.enemies);
         }
         if self.state == State::Flight {
-            self.sector.update(DT, self.w, self.h, &mut self.rng);
+            self.sector.update(war_dt, self.w, self.h, &mut self.rng);
             self.enter_portal();
         }
-        if let Some((_, t)) = &mut self.note {
-            *t -= DT;
-            if *t <= 0.0 {
-                self.note = None;
-            }
-        }
         for i in 0..self.enemies.len() {
-            if self.enemies[i].update(DT, self.w, self.h, &mut self.rng) {
+            if self.enemies[i].update(war_dt, self.w, self.h, &mut self.rng) {
                 self.enemy_fires(i);
             }
         }
-        shot::update(&mut self.shots, DT, self.w, self.h);
+        if self.state == State::Flight && self.sector.phase == Phase::Flight {
+            let taken = self.taken_letters();
+            if let Some(p) = self.pods_spawner.update(DT, self.w, self.h, self.sector.number, &taken, &mut self.rng) {
+                self.pods.push(p);
+            }
+        }
+        for p in &mut self.pods {
+            p.update(war_dt, self.h);
+        }
+        self.pods.retain(|p| !p.done);
+        shot::update(&mut self.shots, DT, war_dt, self.w, self.h);
         self.collide();
         self.enemies.retain(|e| e.hp > 0 && !e.gone());
         fx::update(&mut self.particles, DT);
@@ -260,16 +304,60 @@ impl Game {
         if self.state != State::Flight {
             return;
         }
-        if let Key::Decoded(id) = self.typing.key(c, &mut self.sector.echoes) {
-            if let Some(e) = self.sector.echo(id) {
-                log::info!("decoded echo {id} truth={} {:?}", e.truth, e.text);
-                self.score += 50 * e.text.len() as u32;
-            }
+        let mut targets: Vec<&mut dyn Target> =
+            self.sector.echoes.iter_mut().map(|e| e as &mut dyn Target).chain(self.pods.iter_mut().map(|p| p as &mut dyn Target)).collect();
+        let Key::Done(id) = self.typing.key(c, &mut targets) else { return };
+        if let Some(e) = self.sector.echo(id) {
+            log::info!("decoded echo {id} truth={} {:?}", e.truth, e.text);
+            self.score += 50 * e.text.len() as u32;
+        } else if let Some(i) = self.pods.iter().position(|p| p.id == id) {
+            let pod = self.pods.remove(i);
+            self.claim(pod);
         }
     }
 
+    fn claim(&mut self, pod: Pod) {
+        log::info!("claimed {:?} with {:?}", pod.kind, pod.word);
+        self.score += 25 * pod.word.len() as u32;
+        self.powers.take(pod.kind, (self.ship.x, self.ship.y));
+        if pod.kind == PowerUp::Shield {
+            self.ship.shield = 1.0;
+        }
+        let (cx, cy) = (pod.x + powerup::POD_W / 2.0, pod.y + powerup::POD_H / 2.0);
+        fx::burst(&mut self.particles, cx, cy, 14, 40.0, Tint::Player, &mut self.rng);
+        self.power_note = Some((format!("+ {}", pod.kind.name()), 2.5));
+    }
+
+    /// Letters the live typing targets want next: a new target starts with
+    /// none of them, so one key always names one target.
+    fn taken_letters(&self) -> Vec<char> {
+        let echoes = self.sector.echoes.iter().filter(|e| e.live()).filter_map(Target::next_letter);
+        let pods = self.pods.iter().filter(|p| p.live()).filter_map(Target::next_letter);
+        echoes.chain(pods).collect()
+    }
+
     pub fn drop_lock(&mut self) {
-        self.typing.drop_lock(&mut self.sector.echoes);
+        let mut targets: Vec<&mut dyn Target> =
+            self.sector.echoes.iter_mut().map(|e| e as &mut dyn Target).chain(self.pods.iter_mut().map(|p| p as &mut dyn Target)).collect();
+        self.typing.drop_lock(&mut targets);
+    }
+
+    /// Enter: a smart bomb, if one is carried. Every ship on screen goes, and
+    /// all enemy fire.
+    pub fn bomb(&mut self) {
+        if self.state != State::Flight || self.powers.bombs == 0 {
+            return;
+        }
+        self.powers.bombs -= 1;
+        self.bomb_t = 0.0;
+        for e in self.enemies.iter_mut().filter(|e| e.x < self.w) {
+            e.hp = 0;
+            self.score += e.kind.points();
+            let (cx, cy) = e.aabb().center();
+            fx::burst(&mut self.particles, cx, cy, 18, 55.0, Tint::Side(e.side), &mut self.rng);
+        }
+        self.shots.retain(|s| s.owner == Owner::Player);
+        log::info!("smart bomb, {} left", self.powers.bombs);
     }
 
     /// How near home, 0 (where the surge left you) to 1.
@@ -305,6 +393,7 @@ impl Game {
         self.turn_dir = if self.route.at.1 >= from { 1.0 } else { -1.0 };
         self.enemies.clear();
         self.shots.clear();
+        self.pods.clear();
         self.typing = Typing::default();
         self.set_state(State::Turn);
     }
@@ -317,6 +406,7 @@ impl Game {
         let closeness = self.closeness();
         self.sector = Sector::new(self.sector.number + 1, closeness, &mut self.rng);
         self.spawner = Spawner::default();
+        self.pods_spawner = PodSpawner::default();
         self.ship.x = 8.0;
         self.note = None;
         self.set_state(State::Flight);
@@ -351,6 +441,15 @@ impl Game {
         let mut hits: Vec<f32> = Vec::new();
         for s in self.shots.iter_mut() {
             let owner = s.owner;
+            // keep your fire off the pods: a shot pod is lost
+            if owner == Owner::Player {
+                if let Some(p) = self.pods.iter_mut().find(|p| !p.done && p.aabb().contains(s.x, s.y)) {
+                    p.done = true;
+                    s.spent = true;
+                    fx::burst(&mut self.particles, s.x, s.y, 8, 30.0, Tint::Spark, &mut self.rng);
+                    continue;
+                }
+            }
             let hurts = |e: &Enemy| match owner {
                 Owner::Player => true,
                 Owner::Enemy(side) => e.side != side,
@@ -396,6 +495,9 @@ impl Game {
             Some(Hit::Shield) => fx::burst(&mut self.particles, cx, cy, 6, 35.0, Tint::Spark, &mut self.rng),
             Some(Hit::Life) => {
                 fx::burst(&mut self.particles, cx, cy, 30, 60.0, Tint::Player, &mut self.rng);
+                if let Some(lost) = self.powers.lose_one() {
+                    self.power_note = Some((format!("- {}", lost.name()), 2.5));
+                }
                 log::info!("life lost, {} left", self.ship.lives);
             }
             Some(Hit::Dead) => {
@@ -552,5 +654,32 @@ mod tests {
             g.update(&Controls::default());
         }
         assert_eq!((g.state, g.sector.number), (State::Flight, 1), "no map before the first sector");
+    }
+
+    #[test]
+    fn typing_a_pod_word_claims_its_power_and_shooting_it_loses_it() {
+        let mut g = game();
+        g.pods.push(Pod::new(10_001, PowerUp::Rapid, "flask", 100.0, 20.0));
+        for c in "flask".chars() {
+            g.type_letter(c);
+        }
+        assert!(g.powers.rapid && g.pods.is_empty());
+        g.pods.push(Pod::new(10_002, PowerUp::Bomb, "glad", 100.0, 20.0));
+        g.shots.push(Shot::new(102.0, 22.0, 0.0, 0.0, Owner::Player));
+        g.collide();
+        assert!(g.pods[0].done, "a shot pod is lost");
+    }
+
+    #[test]
+    fn a_smart_bomb_clears_the_screen() {
+        let mut g = game();
+        g.powers.bombs = 1;
+        g.enemies.push(Enemy::gunship(Side::Jade, 100.0, 20.0, 100.0, &mut Rng::new(1)));
+        g.shots.push(Shot::new(50.0, 20.0, -70.0, 0.0, Owner::Enemy(Side::Jade)));
+        g.bomb();
+        assert!(g.enemies.iter().all(|e| e.hp == 0) && g.shots.is_empty());
+        assert_eq!((g.powers.bombs, g.score), (0, 400));
+        g.bomb();
+        assert_eq!(g.score, 400, "no bombs, no bomb");
     }
 }

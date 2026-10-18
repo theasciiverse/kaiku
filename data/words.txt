@@ -1,0 +1,65 @@
+# Power-up words, by keyboard reach. Each level only uses letters a typist
+# has met by then, the way a typing tutor teaches:
+#   home    the home row: a s d f g h j k l
+#   top     plus the top row: q w e r t y u i o p
+#   bottom  plus the bottom row: z x c v b n m
+#   all     long words across the whole board
+[home]
+ask
+sad
+dash
+flag
+glad
+half
+hall
+lads
+fall
+gash
+salad
+flask
+glass
+shall
+alfalfa
+[top]
+radio
+eagle
+laser
+pilot
+rapid
+drift
+solar
+earth
+light
+shield
+quest
+polaris
+jupiter
+aurora
+stellar
+satellite
+[bottom]
+zinc
+beam
+comet
+nova
+moon
+venus
+cosmic
+vector
+nebula
+zenith
+beacon
+photon
+saturn
+neptune
+voyager
+mercury
+gemini
+[all]
+frequency
+telescope
+transmission
+gravitation
+observatory
+constellation
+interplanetary

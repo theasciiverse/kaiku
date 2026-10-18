@@ -4,6 +4,7 @@
 use super::canvas::Canvas;
 use super::palette::{self, SIGNAL};
 use crate::game::echo::{Echo, EchoState, Vis};
+use crate::game::powerup::Pod;
 use crate::game::sector::Portal;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -90,4 +91,29 @@ pub fn portal_label(buf: &mut Buffer, play: Rect, p: &Portal, echoes: &[Echo]) {
     let style = Style::default().fg(palette::rgb(SIGNAL[1])).add_modifier(Modifier::ITALIC);
     let cells: Vec<(char, Style)> = text.chars().map(|c| (c, style)).collect();
     put_cells(buf, x, y, &cells, play);
+}
+
+/// Each pod's word above it: typed letters bright, the rest in the colour of
+/// what the pod holds. Words never garble: they are for the fingers.
+pub fn pod_words(buf: &mut Buffer, play: Rect, pods: &[Pod]) {
+    for p in pods {
+        let color = palette::rgb(super::sprites::power_color(p.kind));
+        let bg = if p.flash > 0.0 { Some(MISS_BG) } else { None };
+        let cells: Vec<(char, Style)> = p
+            .word
+            .chars()
+            .enumerate()
+            .map(|(i, c)| {
+                let style = if i < p.progress { Style::default().fg(palette::rgb(SIGNAL[2])).add_modifier(Modifier::BOLD) } else { Style::default().fg(color) };
+                (c, bg.map_or(style, |b| style.bg(b)))
+            })
+            .collect();
+        let x = play.x as i32 + (p.x / 2.0) as i32 + 2 - cells.len() as i32 / 2;
+        let y = (play.y + (p.y / 4.0) as u16).saturating_sub(1).max(play.y);
+        if p.locked {
+            let mark = [('▸', Style::default().fg(palette::rgb(SIGNAL[2])).add_modifier(Modifier::BOLD))];
+            put_cells(buf, x - 2, y, &mark, play);
+        }
+        put_cells(buf, x, y, &cells, play);
+    }
 }

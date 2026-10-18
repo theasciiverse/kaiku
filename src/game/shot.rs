@@ -27,8 +27,10 @@ impl Shot {
     }
 }
 
-pub fn update(shots: &mut Vec<Shot>, dt: f32, w: f32, h: f32) {
+/// Moves shots: the player's at `dt`, enemy fire at `enemy_dt` (slow time).
+pub fn update(shots: &mut Vec<Shot>, dt: f32, enemy_dt: f32, w: f32, h: f32) {
     for s in shots.iter_mut() {
+        let dt = if s.owner == Owner::Player { dt } else { enemy_dt };
         s.x += s.vx * dt;
         s.y += s.vy * dt;
     }

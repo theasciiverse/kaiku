@@ -147,8 +147,8 @@ pub fn text(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) -> u16 {
     put(buf, x, y, s, style.bg(CHROME_BG))
 }
 
-/// HUD line: shield bar, lives, score, and the input note on the right.
-pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, score: u32, note: Option<&str>) {
+/// HUD line: shield bar, lives, smart bombs, score, and the input note on the right.
+pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, bombs: u8, score: u32, note: Option<&str>) {
     let bg = Style::default().bg(CHROME_BG);
     for x in area.left()..area.right() {
         put(buf, x, area.y, " ", bg);
@@ -163,6 +163,12 @@ pub fn hud(buf: &mut Buffer, area: Rect, shield: f32, lives: u8, score: u32, not
     x = put(buf, x + 3, area.y, "LIVES ", bg.fg(DIM));
     for _ in 0..lives {
         x = put(buf, x, area.y, "▶ ", bg.fg(palette::rgb(palette::SIGNAL[2])));
+    }
+    if bombs > 0 {
+        x = put(buf, x + 2, area.y, "BOMBS ", bg.fg(DIM));
+        for _ in 0..bombs {
+            x = put(buf, x, area.y, "● ", bg.fg(palette::rgb((255, 96, 168))));
+        }
     }
     x = put(buf, x + 2, area.y, "SCORE ", bg.fg(DIM));
     put(buf, x, area.y, &format!("{score:07}"), bg.fg(TEXT).add_modifier(Modifier::BOLD));
