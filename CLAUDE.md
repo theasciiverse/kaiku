@@ -53,13 +53,14 @@ of ideas, not a spec. Don't hold the design to them.
   layer (adapt `entity/src/input.rs`, as Ceres, Brickspire and Marble
   Recovery did). On legacy terminals Ctrl+H arrives as Backspace and Ctrl+J
   as line feed; deal with that when movement is built.
+- **First version: English only, and it teaches typing.** Foreign languages
+  are for later, if at all.
 - **Name:** Kaiku (Finnish for "echo").
 
 ## Ideas on the table (not decided)
 
-- Translation bonus: type a foreign word, then its English meaning, for a
-  power-up.
-- Whether foreign languages feature at all.
+- Later, if foreign languages come in: a translation bonus (type a foreign
+  word, then its English meaning, for a power-up).
 
 ## References
 
