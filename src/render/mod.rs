@@ -98,6 +98,7 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
             canvas.dot(s.x as i32 - i, s.y as i32, palette::SHOT);
         }
     }
+    walls(canvas, game);
     if game.state == State::Home {
         journey::earth(canvas, game);
     }
@@ -182,6 +183,29 @@ fn fire_on_top(buf: &mut ratatui::buffer::Buffer, play: Rect, bg: ratatui::style
     for b in game.enemies.iter().filter(|e| e.hp > 0).filter_map(|e| e.beam()).filter(|b| b.live) {
         for x in 0..px(b.x_end) {
             half(x, px(b.y - 1.0));
+        }
+    }
+}
+
+/// The tunnel walls, in half-block pixels: a lit edge and a darker body, in
+/// the sector's style.
+fn walls(canvas: &mut Canvas, game: &Game) {
+    use crate::game::terrain::Style;
+    let (body, edge): (palette::Rgb, palette::Rgb) = match game.terrain.style {
+        Style::Open => return,
+        Style::Rock => ((44, 36, 34), (100, 84, 72)),
+        Style::Ice => ((26, 52, 70), (150, 210, 240)),
+        Style::Wreck => ((40, 40, 50), (130, 116, 92)),
+    };
+    let rows = (game.h / 2.0) as i32;
+    for x in 0..(game.w / 2.0) as i32 {
+        let (top, bottom) = game.terrain.depth(x as f32 * 2.0 + 1.0);
+        let (t, b) = ((top / 2.0).ceil() as i32, (bottom / 2.0).ceil() as i32);
+        for y in 0..t {
+            canvas.pixel(x, y, palette::rgb(if y == t - 1 { edge } else { body }));
+        }
+        for y in 0..b {
+            canvas.pixel(x, rows - 1 - y, palette::rgb(if y == b - 1 { edge } else { body }));
         }
     }
 }
@@ -451,5 +475,20 @@ mod tests {
         let buf = term.backend().buffer();
         let cell = &buf[(play.x + ((x - 1.0) / 2.0).round() as u16, play.y + (((y - 1.0) / 2.0).round() as u16) / 2)];
         assert_eq!(cell.fg, palette::ENEMY_SHOT, "the bullet, not the letter");
+    }
+
+    #[test]
+    fn later_tunnels_have_walls() {
+        let mut game = Game::new(3);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.start_at(2);
+        for _ in 0..60 * 4 {
+            game.update(&Controls::default());
+        }
+        let text = frame(&game, 100, 30);
+        let top_row: String = text.lines().nth(2).unwrap().chars().collect();
+        assert!(top_row.contains('▀') || top_row.contains('▄') || top_row.contains(' '), "{top_row}");
+        assert_ne!(game.terrain.style, crate::game::terrain::Style::Open);
     }
 }

@@ -14,6 +14,7 @@ pub mod shot;
 pub mod spawn;
 pub mod stats;
 pub mod stars;
+pub mod terrain;
 pub mod typing;
 
 use crate::input::Controls;
@@ -29,6 +30,7 @@ use shot::{Owner, Shot};
 use spawn::Spawner;
 use stars::Starfield;
 use stats::{Chain, Stats};
+use terrain::Terrain;
 use typing::{Key, Target, Typing};
 
 /// Fixed simulation step: 60 Hz, as in Entity.
@@ -44,6 +46,8 @@ const MINE_SHRAPNEL: usize = 8;
 const EXTEND_FIRST: u32 = 30_000;
 const EXTEND_EVERY: u32 = 60_000;
 const MAX_LIVES: u8 = 5;
+/// Scraping a tunnel wall: a nag, not a bullet.
+const SCRAPE_DAMAGE: f32 = 0.1;
 /// Every this many sectors a carrier guards the gates.
 const GUARD_EVERY: u32 = 3;
 /// A lancer's beam takes this much shield.
@@ -56,10 +60,10 @@ const NOTE_TIME: f32 = 6.0;
 /// An axis-aligned box in dots.
 #[derive(Clone, Copy, Debug)]
 pub struct Aabb {
-    x0: f32,
-    y0: f32,
-    x1: f32,
-    y1: f32,
+    pub x0: f32,
+    pub y0: f32,
+    pub x1: f32,
+    pub y1: f32,
 }
 
 impl Aabb {
@@ -117,6 +121,7 @@ pub struct Game {
     next_extend: u32,
     pub tick: u64,
     pub sector: Sector,
+    pub terrain: Terrain,
     pub typing: Typing,
     pub pods: Vec<Pod>,
     pub powers: Powers,
@@ -145,6 +150,7 @@ impl Game {
         let mut rng = Rng::new(seed);
         let sector = Sector::new(1, 0.0, &mut rng);
         let route = Route::new(&mut rng);
+        let terrain = Terrain::new(1, &mut rng);
         Game {
             w: 0.0,
             h: 0.0,
@@ -162,6 +168,7 @@ impl Game {
             next_extend: EXTEND_FIRST,
             tick: 0,
             sector,
+            terrain,
             typing: Typing::default(),
             pods: Vec::new(),
             powers: Powers::default(),
@@ -197,6 +204,7 @@ impl Game {
     pub fn start_at(&mut self, n: u32) {
         let closeness = self.closeness();
         self.sector = Sector::new(n.max(1), closeness, &mut self.rng);
+        self.terrain = Terrain::new(self.sector.number, &mut self.rng);
         self.set_state(State::Flight);
     }
 
@@ -277,6 +285,8 @@ impl Game {
         self.chain.tick(DT);
         if self.state == State::Flight {
             self.stats.seconds += DT;
+            self.terrain.update(DT);
+            self.scrape_walls();
         }
         for note in [&mut self.note, &mut self.power_note] {
             if let Some((_, t)) = note {
@@ -493,6 +503,7 @@ impl Game {
         }
         let closeness = self.closeness();
         self.sector = Sector::new(self.sector.number + 1, closeness, &mut self.rng);
+        self.terrain = Terrain::new(self.sector.number, &mut self.rng);
         self.spawner = Spawner::default();
         self.pods_spawner = PodSpawner::default();
         self.ship.x = 8.0;
@@ -536,6 +547,27 @@ impl Game {
         let len = (dx * dx + dy * dy).sqrt().max(0.001);
         let side = e.side;
         self.shots.push(Shot::new(mx, my, dx / len * ENEMY_SHOT_SPEED, dy / len * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
+    }
+
+    /// The ship against the tunnel walls: a scrape costs shield, and the wall
+    /// pushes the ship back into the open.
+    fn scrape_walls(&mut self) {
+        let b = self.ship.aabb();
+        let (mut top, mut bottom) = (0.0f32, 0.0f32);
+        for x in [b.x0, (b.x0 + b.x1) / 2.0, b.x1] {
+            let (t, d) = self.terrain.depth(x);
+            top = top.max(t);
+            bottom = bottom.max(d);
+        }
+        let floor = self.h - bottom;
+        if b.y0 < top {
+            self.ship.y += top - b.y0;
+        } else if b.y1 > floor {
+            self.ship.y -= b.y1 - floor;
+        } else {
+            return;
+        }
+        self.ship_hit(SCRAPE_DAMAGE);
     }
 
     /// A carrier comes to hold in front of the gates as they open.
@@ -948,9 +980,16 @@ mod tests {
                 let mut g = Game::new(seed);
                 g.resize(96, 22);
                 g.sector = Sector::new(level, 0.0, &mut Rng::new(seed));
+                g.terrain = Terrain::new(level, &mut Rng::new(seed));
                 let mut t = 0;
+                let mut dy = 1;
                 while g.state == State::Flight && t < 60 * 60 * 5 {
-                    let dy = if (t / 70) % 2 == 0 { 1 } else { -1 };
+                    // weave, turning back before the walls, as a player would
+                    let b = g.ship.aabb();
+                    let (top, bottom) = g.terrain.depth(b.x1);
+                    if (t % 70 == 0) || b.y0 < top + 3.0 || b.y1 > g.h - bottom - 3.0 {
+                        dy = if b.y0 < top + 3.0 { 1 } else if b.y1 > g.h - bottom - 3.0 { -1 } else { -dy };
+                    }
                     g.update(&Controls { dx: 0, dy, fire: true });
                     // the sector never ends: keep the war coming
                     if g.sector.phase == Phase::Portals {
@@ -997,5 +1036,20 @@ mod tests {
         g.state = State::Map;
         g.fly_on();
         assert_eq!(g.ship.shield, 1.0);
+    }
+
+    #[test]
+    fn scraping_a_wall_hurts_and_pushes_the_ship_back() {
+        let mut g = game();
+        g.terrain = Terrain::new(2, &mut Rng::new(3));
+        // find a column where the ceiling reaches down
+        g.terrain.scroll = (0..2000).map(|s| s as f32).find(|&s| {
+            g.terrain.scroll = s;
+            g.terrain.depth(g.ship.aabb().x0).0 > 4.0
+        }).unwrap();
+        g.ship.y = 0.0;
+        g.scrape_walls();
+        assert!(g.ship.shield < 1.0);
+        assert!(g.ship.aabb().y0 >= g.terrain.depth(g.ship.aabb().x0).0 - 0.01);
     }
 }
