@@ -12,6 +12,7 @@ of ideas, not a spec. Don't hold the design to them.
 - **A fair mix of typing and playing:** moving and shooting matter as much
   as typing. Space shoots; arrows and Ctrl+h/j/k/l move; Ctrl and other
   non-letter keys are free for actions.
+- **A story arc:** something to aim for across the game.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
 - **Typing is plain a–z.** No accents to type.
