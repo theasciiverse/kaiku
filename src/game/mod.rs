@@ -3,6 +3,7 @@
 pub mod echo;
 pub mod enemy;
 pub mod fx;
+pub mod intro;
 pub mod rng;
 pub mod route;
 pub mod sector;
@@ -64,6 +65,8 @@ impl Aabb {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum State {
+    /// the opening story crawl
+    Intro,
     Flight,
     /// through a portal: the field swings round to the new heading
     Turn,
@@ -133,6 +136,23 @@ impl Game {
         g.resize_dots(self.w, self.h);
         *self = g;
         log::info!("restart");
+    }
+
+    /// Begins with the opening crawl instead of straight in the tunnel.
+    pub fn start_intro(&mut self) {
+        self.set_state(State::Intro);
+    }
+
+    /// A key during the crawl: the first finishes the text, the next flies.
+    pub fn intro_key(&mut self) {
+        if self.state != State::Intro {
+            return;
+        }
+        if self.state_t < intro::duration() {
+            self.state_t = intro::duration();
+        } else {
+            self.set_state(State::Flight);
+        }
     }
 
     /// Fits the field to the play area, in cells. The first fit places the ship.

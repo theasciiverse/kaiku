@@ -47,6 +47,7 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     // dots to half-block pixels: 2×2 dots each
     let px = |v: f32| (v / 2.0).round() as i32;
     match game.state {
+        State::Intro => journey::intro(&mut canvas, buf, play, game),
         State::Map => journey::map(&mut canvas, buf, play, game),
         State::Turn => {
             journey::turn(&mut canvas, game);
@@ -247,5 +248,21 @@ mod tests {
         let text = frame(&game, 100, 30);
         assert!(text.chars().filter(|c| ('\u{2801}'..='\u{28FF}').contains(c)).count() > 100, "streaks and the ring");
         assert!(text.contains('▀'), "the ship rides through");
+    }
+
+    #[test]
+    fn the_intro_types_out_its_story() {
+        let mut game = Game::new(6);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.start_intro();
+        game.state_t = 2.0;
+        let early = frame(&game, 100, 30);
+        assert!(early.contains("AN INTERPLANETARY WAR") && !early.contains("FOLLOW THEM"));
+        game.intro_key();
+        let done = frame(&game, 100, 30);
+        assert!(done.contains("FOLLOW THEM"), "the first key finishes the text");
+        game.intro_key();
+        assert_eq!(game.state, State::Flight, "the next one flies");
     }
 }

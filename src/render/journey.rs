@@ -4,7 +4,7 @@
 use super::canvas::Canvas;
 use super::palette::{self, Rgb, SIGNAL};
 use crate::game::route::{Route, MAX_DISTANCE};
-use crate::game::{Game, TURN_TIME};
+use crate::game::{intro, Game, TURN_TIME};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -116,6 +116,41 @@ pub fn earth(canvas: &mut Canvas, game: &Game) {
             let light = (1.0 - (dx / r).max(0.0) * 0.8).clamp(0.15, 1.0);
             canvas.pixel(px, py, palette::rgb(palette::lerp((4, 8, 16), base, light)));
         }
+    }
+}
+
+/// The opening crawl over the drifting starfield: centred lines typing out,
+/// a blinking cursor, then the call to fly. If the text is taller than the
+/// play area it scrolls up as it types.
+pub fn intro(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game) {
+    for s in &game.stars.stars {
+        canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
+    }
+    canvas.blit(buf, play, palette::SPACE);
+    let full: Vec<&str> = intro::text().lines().collect();
+    let shown = intro::shown(game.state_t);
+    let lines: Vec<&str> = shown.split('\n').collect();
+    let width = full.iter().map(|l| l.chars().count()).max().unwrap_or(0) as u16;
+    let x = play.x + play.width.saturating_sub(width) / 2;
+    let room = play.height.saturating_sub(4);
+    let top = play.y + play.height.saturating_sub(full.len() as u16 + 2) / 2;
+    let scroll = (lines.len() as u16).saturating_sub(room);
+    let text = Style::default().fg(palette::TEXT).add_modifier(Modifier::BOLD);
+    let mut y = top.max(play.y + 1);
+    for line in lines.iter().skip(scroll as usize) {
+        put(buf, x, y, line, text);
+        y += 1;
+    }
+    let blink = (game.tick / 15).is_multiple_of(2);
+    let done = game.state_t >= intro::duration();
+    if !done && blink {
+        let last = lines.last().map_or(0, |l| l.chars().count()) as u16;
+        put(buf, x + last, y - 1, "▌", Style::default().fg(palette::rgb(SIGNAL[1])));
+    }
+    if done && blink {
+        let call = "PRESS ENTER";
+        let cx = play.x + play.width.saturating_sub(call.len() as u16) / 2;
+        put(buf, cx, (y + 1).min(play.bottom().saturating_sub(1)), call, Style::default().fg(palette::rgb(SIGNAL[1])).add_modifier(Modifier::BOLD));
     }
 }
 

@@ -44,6 +44,7 @@ fn main() -> io::Result<()> {
 fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64);
     let mut game = Game::new(seed);
+    game.start_intro();
     let mut input = Input::new(kitty);
     let mut next = Instant::now() + TICK;
     while !input.quit {
@@ -65,6 +66,11 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         let mut steps = 0;
         while now >= next && steps < 5 {
             if !input.confirm_quit {
+                if game.state == game::State::Intro && (input.bomb || !input.typed.is_empty()) {
+                    game.intro_key();
+                    input.typed.clear();
+                    input.bomb = false;
+                }
                 // Enter on the game-over screen flies again
                 if input.bomb {
                     match game.state {
