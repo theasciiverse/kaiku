@@ -89,7 +89,8 @@ every state at sizes from 10×4 to 240×70. Also (`376dad5`): a letter could
 lock onto an echo or pod still entering off the right edge, unseen. Only
 on-screen targets can be locked now. And (`36bcaeb`): a new echo could
 share its first letter with a live pod, so one key could mean either; echoes
-now avoid pods' letters too.
+now avoid pods' letters too. And (`d0f863a`): a gate sliding in could
+sweep up a ship parked at the right edge; gates open only once settled.
 
 ## Decisions I made for you
 
