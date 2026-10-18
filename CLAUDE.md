@@ -9,6 +9,9 @@ of ideas, not a spec. Don't hold the design to them.
 
 - **A sideways (horizontal) shoot-'em-up with typing**, Typespeed-style.
   **ZType is the feel to match:** first letter locks a target, typing fires.
+- **A fair mix of typing and playing:** moving and shooting matter as much
+  as typing. Space shoots; arrows and Ctrl+h/j/k/l move; Ctrl and other
+  non-letter keys are free for actions.
 - **Fun, challenging and educational.**
 - **Terminal-first and all keyboard.** Rust + Ratatui, Asciiverse.
 - **Typing is plain a–z.** No accents to type.
