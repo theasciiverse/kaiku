@@ -7,7 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 
 pub const WORDMARK: &str = "K A I K U";
-pub const SUBTITLE: &str = "echo home";
+pub const SUBTITLE: &str = "echoes home";
 
 /// Rows of the bottom panel, borders included: two lines of content.
 pub const PANEL_ROWS: u16 = 4;
@@ -51,7 +51,7 @@ fn put(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) -> u16 {
     cx
 }
 
-/// Header: `╱╱╱ K A I K U ╱╱╱╱ echo home ╱╱╱…`, the wordmark in the ramp.
+/// Header: `╱╱╱ K A I K U ╱╱╱╱ echoes home ╱╱╱…`, the wordmark in the ramp.
 pub fn header(buf: &mut Buffer, area: Rect, tick: u64) {
     let bg = Style::default().bg(CHROME_BG);
     for x in area.left()..area.right() {

@@ -12,7 +12,7 @@ of ideas, not a spec. Don't hold the design to them.
 - **A fair mix of typing and playing:** moving and shooting matter as much
   as typing. Space shoots; arrows and Ctrl+h/j/k/l move; Ctrl and other
   non-letter keys are free for actions.
-- **Story: Echo Home.** An interplanetary war is raging. A surge has
+- **Full title: Kaiku — Echoes Home.** The story: an interplanetary war is raging. A surge has
   thrown your ship far off course, and to get home you must find the right
   portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.

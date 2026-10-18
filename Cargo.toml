@@ -2,7 +2,7 @@
 name = "kaiku"
 version = "0.1.0"
 edition = "2021"
-description = "Echo Home: a sideways typing shmup for the terminal (Asciiverse)"
+description = "Kaiku — Echoes Home: a sideways typing shmup for the terminal (Asciiverse)"
 
 [dependencies]
 ratatui = "0.30"
