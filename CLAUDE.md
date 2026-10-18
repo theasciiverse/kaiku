@@ -16,6 +16,15 @@ of ideas, not a spec. Don't hold the design to them.
   thrown your ship far off course, and to get home you must find the right
   portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
+- **What the echoes are:** a mashup of Earth's famous transmissions (Apollo
+  ("The Eagle has landed"), JFK's "We choose to go to the Moon", the
+  Arecibo message, the Voyager greeting "Hello from the children of planet
+  Earth"), bouncing around the region of space the pilot is stranded in.
+  **The clearer an echo, the more it points home.** Use public-domain
+  sources only (NASA, US government, Arecibo); no music or commercial
+  broadcasts.
+- **Intro scene:** the pilot manages to repair the ship's receiver, which
+  starts catching snippets of these transmissions, all garbled.
 - **Echoes:** during play an echo shows as garbled text, flickering now
   and then into full clear while still blinking and garbled. Typing it out
   makes it clear, letter by letter. **The echoes are what guide you home:**
