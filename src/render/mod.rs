@@ -80,7 +80,7 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         }
     }
     if input.confirm_quit {
-        chrome::question(buf, play, "Quit Kaiku?  y / n");
+        chrome::question(buf, play, "PAUSED  ·  y: quit  ·  any other key: fly on");
     }
 }
 
