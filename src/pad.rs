@@ -26,6 +26,7 @@ pub struct PadPresses {
     pub dash: bool,
     pub confirm: bool,
     pub pause: bool,
+    pub help: bool,
 }
 
 /// A stick axis with the deadzone taken out and the rest rescaled, so a
@@ -121,6 +122,7 @@ impl Pad {
                             Button::East | Button::LeftTrigger => self.presses.bomb = true,
                             Button::West | Button::RightTrigger => self.presses.dash = true,
                             Button::Start => self.presses.pause = true,
+                            Button::Select => self.presses.help = true,
                             _ => {}
                         }
                     }

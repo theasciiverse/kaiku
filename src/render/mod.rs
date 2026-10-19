@@ -86,7 +86,9 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
             _ => {}
         }
     }
-    if input.confirm_quit {
+    if input.help {
+        chrome::controls(buf, play, "f1: back to the game");
+    } else if input.confirm_quit {
         chrome::question(buf, play, "PAUSED  ·  y: quit  ·  any other key: fly on");
     }
 }
@@ -402,7 +404,9 @@ mod tests {
         let done = frame(&game, 100, 30);
         assert!(done.contains("FOLLOW THEM"), "the first key finishes the text");
         game.intro_key();
-        assert_eq!(game.state, State::Cockpit, "the next one goes to the cockpit");
+        assert!(frame(&game, 100, 30).contains("CONTROLS"), "then the controls card");
+        game.intro_key();
+        assert_eq!(game.state, State::Cockpit, "then the cockpit");
     }
 
     #[test]
@@ -411,6 +415,7 @@ mod tests {
         let play = play_area(Rect::new(0, 0, 100, 30));
         game.resize(play.width, play.height);
         game.start_intro();
+        game.intro_key();
         game.intro_key();
         game.intro_key();
         for c in "reb".chars() {
@@ -539,6 +544,8 @@ mod tests {
             let play = play_area(Rect::new(0, 0, w, h));
             game.resize(play.width, play.height);
             game.start_intro();
+            frame(&game, w, h);
+            game.intro_key();
             frame(&game, w, h);
             game.intro_key();
             frame(&game, w, h);

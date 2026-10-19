@@ -127,6 +127,10 @@ pub fn intro(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game) {
         canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
     }
     canvas.blit(buf, play, palette::SPACE);
+    if game.intro_card {
+        super::chrome::controls(buf, play, "PRESS ENTER");
+        return;
+    }
     let full: Vec<&str> = intro::text().lines().collect();
     let shown = intro::shown(game.state_t);
     let lines: Vec<&str> = shown.split('\n').collect();

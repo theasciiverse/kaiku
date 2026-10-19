@@ -158,6 +158,8 @@ pub struct Input {
     pub quit: bool,
     /// Esc was pressed: show the quit question and wait for y.
     pub confirm_quit: bool,
+    /// F1: the controls card is up (the game waits)
+    pub help: bool,
     /// the gamepad in use, if one is connected: two can play, pilot and comms
     pub pad_name: Option<String>,
 }
@@ -192,6 +194,7 @@ impl Input {
             mute: false,
             quit: false,
             confirm_quit: false,
+            help: false,
             pad_name: None,
         }
     }
@@ -219,6 +222,14 @@ impl Input {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         if ctrl && k.code == KeyCode::Char('c') {
             self.quit = true;
+            return;
+        }
+        // F1 opens the controls card and closes it; so does Esc while it's up
+        if press && (k.code == KeyCode::F(1) || (self.help && k.code == KeyCode::Esc)) {
+            self.help = !self.help;
+            return;
+        }
+        if self.help {
             return;
         }
         if self.confirm_quit {

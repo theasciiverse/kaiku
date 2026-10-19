@@ -144,6 +144,8 @@ pub struct Game {
     pub turn_dir: f32,
     /// the tutorial scene, while it runs
     pub cockpit: Option<Cockpit>,
+    /// after the crawl: the controls card, before the cockpit
+    pub intro_card: bool,
     /// the turn under way is the one out of the cockpit
     first_turn: bool,
     /// moments to be heard and felt, drained by the main loop each frame
@@ -190,6 +192,7 @@ impl Game {
             state_t: 0.0,
             turn_dir: 1.0,
             cockpit: None,
+            intro_card: false,
             first_turn: false,
             cues: Vec::new(),
             note: None,
@@ -232,7 +235,11 @@ impl Game {
         }
         if self.state_t < intro::duration() {
             self.state_t = intro::duration();
+        } else if !self.intro_card {
+            // the story told: now how to fly
+            self.intro_card = true;
         } else {
+            self.intro_card = false;
             self.cockpit = Some(Cockpit::new(&mut self.rng));
             self.set_state(State::Cockpit);
         }
@@ -977,6 +984,8 @@ mod tests {
         g.start_intro();
         g.intro_key();
         g.intro_key();
+        assert!(g.intro_card, "the controls card after the story");
+        g.intro_key();
         assert_eq!(g.state, State::Cockpit);
         for c in "reboottunescantheeaglehaslanded".chars() {
             g.type_letter(c);
@@ -1103,6 +1112,7 @@ mod tests {
     fn a_bot_can_fly_the_whole_way_home() {
         let mut g = game();
         g.start_intro();
+        g.intro_key();
         g.intro_key();
         g.intro_key();
         g.skip_cockpit();
@@ -1299,6 +1309,7 @@ mod tests {
     fn the_stars_hold_still_in_the_cockpit() {
         let mut g = game();
         g.start_intro();
+        g.intro_key();
         g.intro_key();
         g.intro_key();
         let before: Vec<f32> = g.stars.stars.iter().map(|s| s.x).collect();

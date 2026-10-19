@@ -23,6 +23,7 @@ cargo run --release
 | Enter | smart bomb; on the map, fly on |
 | Tab | dash: a burst of speed you can't be hit in |
 | Esc | pause (y quits) |
+| F1 | the controls card (the game waits) |
 | F8 | sound and music on/off (`--mute` starts silent, `--no-music` keeps only the effects) |
 
 **Two players:** plug in a gamepad and one flies while the other types.
@@ -34,6 +35,7 @@ cargo run --release
 | Right face button or left bumper | smart bomb |
 | Left face button or right bumper | dash |
 | Start / + | pause |
+| Select / − | the controls card |
 
 The pad rumbles: hard when you're hit, big for bombs and jumps, and a small
 pulse when comms decodes an echo or claims a power-up.

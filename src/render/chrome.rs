@@ -201,8 +201,8 @@ pub fn hud(buf: &mut Buffer, area: Rect, h: &Hud) {
     // the note on the right gives way when the line is short: the score and
     // the gauges come first
     let left_end = x + if multiplier > 1 { 4 } else { 0 };
-    let full = note.map(|n| format!("{n}  ·  esc quit "));
-    for right in full.iter().map(String::as_str).chain(["esc quit "]) {
+    let full = note.map(|n| format!("{n}  ·  f1 help "));
+    for right in full.iter().map(String::as_str).chain(["f1 help "]) {
         let rx = area.right().saturating_sub(right.chars().count() as u16);
         if rx > left_end + 1 {
             put(buf, rx, area.y, right, bg.fg(DIM));
@@ -250,4 +250,48 @@ pub fn summary(buf: &mut Buffer, area: Rect, title: &str, lines: &[(String, Stri
     }
     let fx = x + (w - foot.chars().count() as u16) / 2;
     put(buf, fx, y + h - 2, foot, Style::default().bg(CHROME_BG).fg(palette::rgb(palette::SIGNAL[1])));
+}
+
+/// The controls: what, on the keys, on a pad.
+pub const CONTROLS: [[&str; 3]; 7] = [
+    ["fly", "arrows · ctrl+hjkl", "stick · d-pad"],
+    ["fire", "space (hold)", "bottom button"],
+    ["type echoes and words", "a–z", ""],
+    ["drop the lock", "backspace", ""],
+    ["smart bomb", "enter", "right button · LB"],
+    ["dash", "tab", "left button · RB"],
+    ["pause · help · sound", "esc · f1 · f8", "start · select"],
+];
+
+/// The controls card: a three-column table in a box, with a line on
+/// two-player play and a foot line (how to go on).
+pub fn controls(buf: &mut Buffer, area: Rect, foot: &str) {
+    let widths: Vec<usize> = (0..3).map(|c| CONTROLS.iter().map(|r| r[c].chars().count()).max().unwrap_or(0).max([0, 8, 7][c])).collect();
+    let two = "two players: one flies on the pad, the other types on the keys";
+    let inner_w = (widths.iter().sum::<usize>() + 6).max(two.chars().count()).max(foot.chars().count());
+    let w = inner_w as u16 + 6;
+    let h = CONTROLS.len() as u16 + 7;
+    if area.width < w || area.height < h {
+        // too small for the card: the essentials in one line
+        question(buf, area, &format!("fly · space fire · a–z type · tab dash · enter bomb  ·  {foot}"));
+        return;
+    }
+    let x = area.x + (area.width - w) / 2;
+    let y = area.y + (area.height - h) / 2;
+    let frame = Rect::new(x, y, w, h);
+    clear(buf, frame);
+    titled(buf, frame, "controls");
+    let head = Style::default().bg(CHROME_BG).fg(DIM).add_modifier(Modifier::ITALIC);
+    let cols = [x + 3, x + 3 + widths[0] as u16 + 3, x + 3 + (widths[0] + widths[1]) as u16 + 6];
+    put(buf, cols[1], y + 1, "keyboard", head);
+    put(buf, cols[2], y + 1, "gamepad", head);
+    for (i, row) in CONTROLS.iter().enumerate() {
+        let ry = y + 2 + i as u16;
+        put(buf, cols[0], ry, row[0], Style::default().bg(CHROME_BG).fg(DIM));
+        put(buf, cols[1], ry, row[1], Style::default().bg(CHROME_BG).fg(TEXT).add_modifier(Modifier::BOLD));
+        put(buf, cols[2], ry, row[2], Style::default().bg(CHROME_BG).fg(TEXT));
+    }
+    put(buf, x + 3, y + h - 4, two, Style::default().bg(CHROME_BG).fg(palette::rgb(palette::SIGNAL[1])).add_modifier(Modifier::ITALIC));
+    let fx = x + (w - foot.chars().count() as u16) / 2;
+    put(buf, fx, y + h - 2, foot, Style::default().bg(CHROME_BG).fg(palette::rgb(palette::SIGNAL[2])).add_modifier(Modifier::BOLD));
 }

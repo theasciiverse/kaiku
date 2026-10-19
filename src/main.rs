@@ -82,6 +82,9 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         if presses.pause {
             input.confirm_quit = !input.confirm_quit;
         }
+        if presses.help {
+            input.help = !input.help;
+        }
         match game.state {
             game::State::Flight => {
                 input.bomb |= presses.bomb;
@@ -107,7 +110,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         let now = Instant::now();
         let mut steps = 0;
         while now >= next && steps < 5 {
-            if !input.confirm_quit {
+            if !input.confirm_quit && !input.help {
                 if game.state == game::State::Intro && (input.bomb || !input.typed.is_empty()) {
                     game.intro_key();
                     input.typed.clear();
