@@ -1,6 +1,6 @@
 # Ship-to-ship chatter the receiver picks up from the war: atmosphere while
 # nothing else is coming in. One per line: side | callsign | words.
-# The side names are working names, as in the code (amber, jade).
+# The two fleets: Amber and Jade.
 amber | AMBER-3 | hold the line, they're coming through the gap
 amber | AMBER-9 | unknown contact on the left flank, not one of theirs
 amber | AMBER-1 | all wings, regroup on the carrier

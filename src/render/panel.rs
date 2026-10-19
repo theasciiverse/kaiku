@@ -10,7 +10,7 @@ use crate::game::sector::Phase;
 use crate::game::{Game, State};
 
 /// What the receiver hears on arrival.
-const HOME_ECHO: (&str, &str) = ("hello from the children of planet earth", "Voyager Golden Record · 1977");
+const HOME_ECHO: (&str, &str) = ("we leave as we came", "Apollo 17 · 1972");
 use super::palette::{self, CHROME_BG, DIM, TRACE};
 use super::sprites;
 use ratatui::buffer::Buffer;

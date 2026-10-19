@@ -70,6 +70,9 @@ of ideas, not a spec. Don't hold the design to them.
   are for later, if at all.
 - **Two players:** a gamepad flies (the pilot) while the keyboard types (comms).
   Plug in a pad and it's co-op; either alone can still do both.
+- **The fleets are Amber and Jade.** The opening crawl, the fleet chatter and the
+  credits (`data/intro.txt`, `data/chatter.txt`, `data/credits.txt`) are the
+  approved texts. The last echo, at home, is "we leave as we came" (Apollo 17).
 - **Name:** Kaiku (Finnish for "echo").
 
 ## Ideas on the table (not decided)

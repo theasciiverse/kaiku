@@ -378,7 +378,7 @@ mod tests {
         game.state = State::Home;
         game.state_t = 5.0;
         let text = frame(&game, 100, 30);
-        assert!(text.contains("hello from the children of planet earth"));
+        assert!(text.contains("we leave as we came"));
         assert!(text.contains("HOME") && text.contains("enter: the credits"));
     }
 

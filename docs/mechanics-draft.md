@@ -118,7 +118,7 @@ Enemy fleets don't carry words; only **power-ups** and **echoes** do.
   lives come at 30,000 points and every 60,000 after, up to 5 *(default)*.
 - **Scoring:** kills in quick succession (within 2.5 s) build a chain;
   every five links add one to the multiplier, up to ×8. Any hit breaks it.
-- **The war:** two sides, Amber and Jade (working names), each with its own
+- **The war:** two sides, Amber and Jade, each with its own
   colours. Ships fire at the player or at the other side; a side never hurts
   its own. Enemy fire has one red and nothing else uses it, and it is drawn
   over everything, words included.
@@ -183,8 +183,8 @@ cockpit scene below begins.
 
 ## Arrival home
 
-The last echo is fully clear and steady: perhaps the Voyager greeting, or a
-voice from home. Quiet, no music (a nod to Zendocon's silent finale).
+The last echo is fully clear and steady: Gene Cernan's "we leave as we
+came" (Apollo 17, 1972). Quiet, no music (a nod to Zendocon's silent finale).
 Credits.
 
 ## Screen layout and look
