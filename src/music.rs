@@ -446,7 +446,7 @@ pub fn ctrl_for(game: &crate::game::Game) -> Ctrl {
         State::Flight => Mood::Flight,
         State::Turn => Mood::Turn,
         State::Map => Mood::Map,
-        State::Home => Mood::Home,
+        State::Home | State::Credits => Mood::Home,
         State::Over => Mood::Over,
     };
     let on_screen = |x: f32| x < game.w;

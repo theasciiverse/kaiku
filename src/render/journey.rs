@@ -158,6 +158,40 @@ pub fn intro(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game) {
     }
 }
 
+/// The credits: centred lines rolling up from the bottom over the stars,
+/// headings bold, coming to rest with the last line above the middle and the
+/// call to fly again below it.
+pub fn credits(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game) {
+    for s in &game.stars.stars {
+        canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
+    }
+    canvas.blit(buf, play, palette::SPACE);
+    const ROLL: f32 = 2.2; // rows a second
+    let lines: Vec<&str> = include_str!("../../data/credits.txt").trim_end().lines().collect();
+    // they roll up until the last line rests just above the middle, and stay
+    let (h, n) = (play.height as i32, lines.len() as i32);
+    let rest = h - (h / 2 - 1) + n - 1;
+    let offset = ((game.state_t * ROLL) as i32).min(rest);
+    let top = play.y as i32 + h - offset;
+    for (i, line) in lines.iter().enumerate() {
+        let y = top + i as i32;
+        if y < play.y as i32 || y >= play.bottom() as i32 {
+            continue;
+        }
+        // headings are the all-capital lines
+        let heading = line.chars().any(char::is_alphabetic) && !line.chars().any(char::is_lowercase);
+        let style = if heading { Style::default().fg(palette::rgb(SIGNAL[2])).add_modifier(Modifier::BOLD) } else { Style::default().fg(palette::TEXT) };
+        let x = play.x + play.width.saturating_sub(line.chars().count() as u16) / 2;
+        put(buf, x, y as u16, line, style);
+    }
+    // once they've come to rest
+    if offset == rest && (game.tick / 15).is_multiple_of(2) {
+        let call = "enter: fly again";
+        let cx = play.x + play.width.saturating_sub(call.len() as u16) / 2;
+        put(buf, cx, (play.y + play.height / 2 + 2).min(play.bottom().saturating_sub(1)), call, Style::default().fg(palette::rgb(SIGNAL[1])).add_modifier(Modifier::BOLD));
+    }
+}
+
 fn put(buf: &mut Buffer, x: u16, y: u16, s: &str, style: Style) {
     buf.set_string(x, y, s, style);
 }

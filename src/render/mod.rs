@@ -65,6 +65,7 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     let px = |v: f32| (v / 2.0).round() as i32;
     match game.state {
         State::Intro => journey::intro(&mut canvas, buf, play, game),
+        State::Credits => journey::credits(&mut canvas, buf, play, game),
         State::Cockpit => {
             if let Some(c) = &game.cockpit {
                 cockpit::draw(&mut canvas, buf, play, game, c);
@@ -237,7 +238,8 @@ fn summary(buf: &mut ratatui::buffer::Buffer, area: Rect, game: &Game, title: &s
         ("typing".to_string(), format!("{}% of {} keys", s.accuracy(), s.keys)),
         ("time".to_string(), time),
     ];
-    chrome::summary(buf, area, title, &lines, "enter: fly again");
+    let foot = if game.state == State::Home { "enter: the credits" } else { "enter: fly again" };
+    chrome::summary(buf, area, title, &lines, foot);
 }
 
 /// A jammer's interference: Braille rings pulsing out from its dish.
@@ -377,7 +379,7 @@ mod tests {
         game.state_t = 5.0;
         let text = frame(&game, 100, 30);
         assert!(text.contains("hello from the children of planet earth"));
-        assert!(text.contains("HOME") && text.contains("enter: fly again"));
+        assert!(text.contains("HOME") && text.contains("enter: the credits"));
     }
 
     #[test]
@@ -575,5 +577,19 @@ mod tests {
                 frame(&game, w, h);
             }
         }
+    }
+
+    #[test]
+    fn the_credits_roll_up() {
+        let mut game = Game::new(5);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.roll_credits();
+        game.state_t = 6.0;
+        let early = frame(&game, 100, 30);
+        assert!(early.contains("KAIKU") && early.contains("ECHOES HOME"));
+        game.state_t = 40.0;
+        let late = frame(&game, 100, 30);
+        assert!(late.contains("FOR FLYING HOME") && !late.contains("an Asciiverse game"));
     }
 }

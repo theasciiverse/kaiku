@@ -55,6 +55,8 @@ fn start(game: &mut Game) {
     if let Some(i) = flag("--sector") {
         let n = args.get(i + 1).and_then(|n| n.parse().ok()).unwrap_or(1);
         game.start_at(n);
+    } else if flag("--credits").is_some() {
+        game.roll_credits();
     } else if flag("--skip-intro").is_some() || flag("--demo").is_some() {
         game.start_at(1);
     } else {
@@ -137,7 +139,9 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 // Enter on the game-over screen flies again
                 if input.bomb {
                     match game.state {
-                        game::State::Over | game::State::Home => game.restart(),
+                        // home, then the credits, then fly again
+                        game::State::Home => game.roll_credits(),
+                        game::State::Over | game::State::Credits => game.restart(),
                         game::State::Map => game.fly_on(),
                         game::State::Cockpit => game.skip_cockpit(),
                         game::State::Flight => game.bomb(),

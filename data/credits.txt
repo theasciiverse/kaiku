@@ -1,0 +1,39 @@
+KAIKU
+ECHOES HOME
+
+an Asciiverse game
+
+
+created by
+David
+
+made with
+Claude Code
+
+
+THE ECHOES
+
+NASA mission audio
+Mercury · Gemini · Apollo
+John F. Kennedy
+the Voyager Golden Record
+
+
+INSPIRED BY
+
+Gates of Zendocon
+Epyx, 1989
+ZType · Typespeed
+the Metroid intro
+
+
+BUILT ON
+
+Ratatui · crossterm
+gilrs · rodio
+the Asciiverse games
+Entity and Ceres
+
+
+THANK YOU
+FOR FLYING HOME

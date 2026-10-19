@@ -103,6 +103,8 @@ pub enum State {
     Over,
     /// arrived
     Home,
+    /// the credits roll, after home (or with `--credits`)
+    Credits,
 }
 
 pub struct Game {
@@ -212,7 +214,14 @@ impl Game {
 
     /// The run is over, one way or the other.
     pub fn finished(&self) -> bool {
-        matches!(self.state, State::Over | State::Home)
+        matches!(self.state, State::Over | State::Home | State::Credits)
+    }
+
+    /// The credits roll: after home, or straight away with `--credits`.
+    pub fn roll_credits(&mut self) {
+        self.enemies.clear();
+        self.shots.clear();
+        self.set_state(State::Credits);
     }
 
     /// Starts straight in the tunnel at sector `n`, skipping the opening.
