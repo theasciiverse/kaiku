@@ -179,11 +179,11 @@ pub fn hud(buf: &mut Buffer, area: Rect, h: &Hud) {
     for _ in 0..lives {
         x = put(buf, x, area.y, "▶ ", bg.fg(palette::rgb(palette::SIGNAL[2])));
     }
-    if bombs > 0 {
-        x = put(buf, x + 2, area.y, "BOMBS ", bg.fg(DIM));
-        for _ in 0..bombs {
-            x = put(buf, x, area.y, "● ", bg.fg(palette::rgb((255, 96, 168))));
-        }
+    // every bomb slot, carried or empty, so you always know what you have
+    x = put(buf, x + 2, area.y, "BOMBS ", bg.fg(DIM));
+    for i in 0..crate::game::powerup::MAX_BOMBS {
+        let (mark, fg) = if i < bombs { ("●", palette::rgb((255, 96, 168))) } else { ("○", TRACE) };
+        x = put(buf, x, area.y, mark, bg.fg(fg));
     }
     // DASH lights up when it's ready, and fills back in while it cools
     let ready = dash <= 0.0;

@@ -305,6 +305,7 @@ mod tests {
         }
         assert!(text.contains("KAIKU kaiku kaiku kaiku"), "the name and its echoes");
         assert!(text.contains('╭') && text.contains("SHIELD"));
+        assert!(text.contains("BOMBS ○○○"), "empty bomb slots show too");
         assert!(text.contains("RECEIVER") && text.contains("POWER-UPS"), "the bottom panel");
         assert!(text.contains('▀') || text.contains('▄'), "the ship is half-blocks");
         assert!(text.chars().any(|c| ('\u{2801}'..='\u{28FF}').contains(&c)), "stars and shots are Braille");
