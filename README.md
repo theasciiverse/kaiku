@@ -67,8 +67,7 @@ game plays itself; any key quits), `--credits`, `--mute`, `--no-music`.
 ## Credits and sources
 
 - **Echoes:** public-domain transmissions from NASA missions (Mercury,
-  Gemini, Apollo) and John F. Kennedy's speeches, plus the Voyager Golden
-  Record greeting (its rights still to be checked). See `data/echoes.txt`.
+  Gemini, Apollo) and John F. Kennedy's speeches. See `data/echoes.txt`.
 - **Inspired by:** ZType, Typespeed, and *Gates of Zendocon* (Epyx, 1989),
   whose worlds are linked by gates. Homage only: no names, code or art taken.
 - **Input:** the held-key layer is adapted from Asciiverse's Entity.

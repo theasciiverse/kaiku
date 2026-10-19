@@ -69,7 +69,6 @@ A **sector** is one stage: one tunnel between two portals.
   - Apollo: "The Eagle has landed", "one small step", "Houston, we've had a
     problem", the Apollo 8 Christmas Eve reading.
   - JFK's "We choose to go to the Moon".
-  - The Voyager greeting "Hello from the children of planet Earth".
   - The Arecibo message, as a Braille picture echo.
 
   Snippets can cut between sources mid-line, like a radio jumping stations.

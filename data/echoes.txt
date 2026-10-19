@@ -2,8 +2,7 @@
 # you into. One per line: text | source. Typing uses the letters only; spaces
 # and punctuation fill themselves in.
 #
-# Public domain only: NASA mission audio and US government works. The Voyager
-# greeting's rights are still to be checked before release.
+# Public domain only: NASA mission audio and US government works.
 the eagle has landed | Apollo 11 · 1969
 houston tranquility base here | Apollo 11 · 1969
 one small step for man | Apollo 11 · 1969
@@ -17,7 +16,6 @@ but because they are hard | John F. Kennedy · 1962
 godspeed john glenn | Mercury-Atlas 6 · 1962
 good night good luck | Apollo 8 · 1968
 in the beginning | Apollo 8 · 1968
-hello from the children of planet earth | Voyager Golden Record · 1977
 the eagle has wings | Apollo 11 · 1969
 roger tranquility we copy you on the ground | Apollo 11 · 1969
 you got a bunch of guys about to turn blue | Apollo 11 · 1969

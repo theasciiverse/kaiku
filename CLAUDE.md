@@ -18,8 +18,7 @@ of ideas, not a spec. Don't hold the design to them.
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
 - **What the echoes are:** a mashup of Earth's famous transmissions (Apollo
   ("The Eagle has landed"), JFK's "We choose to go to the Moon", the
-  Arecibo message, the Voyager greeting "Hello from the children of planet
-  Earth"), bouncing around the region of space the pilot is stranded in.
+  Arecibo message), bouncing around the region of space the pilot is stranded in.
   **The clearer an echo, the more it points home.** Use public-domain
   sources only (NASA, US government, Arecibo); no music or commercial
   broadcasts.
@@ -73,6 +72,7 @@ of ideas, not a spec. Don't hold the design to them.
 - **The fleets are Amber and Jade.** The opening crawl, the fleet chatter and the
   credits (`data/intro.txt`, `data/chatter.txt`, `data/credits.txt`) are the
   approved texts. The last echo, at home, is "we leave as we came" (Apollo 17).
+  The Voyager greeting is out (2026-10-19): its rights were never checked.
 - **Name:** Kaiku (Finnish for "echo").
 
 ## Ideas on the table (not decided)
