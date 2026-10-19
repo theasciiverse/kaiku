@@ -5,6 +5,8 @@
 use super::canvas::Canvas;
 use super::echoes;
 use super::palette::{self, Rgb, DIM, SIGNAL, TRACE};
+use super::sprites;
+use crate::game::enemy::Side;
 use crate::game::cockpit::{Cockpit, Step, COMMANDS};
 use crate::game::Game;
 use ratatui::buffer::Buffer;
@@ -16,6 +18,57 @@ const DASH_EDGE: Rgb = (64, 76, 100);
 const STRUT: Color = Color::Rgb(52, 62, 84);
 const RING: Color = Color::Rgb(200, 186, 168);
 const MISS_BG: Color = Color::Rgb(70, 22, 40);
+
+/// The war, far off: tiny ships of both fleets crossing the window at their
+/// own speeds, the two sides heading opposite ways, firing the odd tracer,
+/// with faint flashes in the distance. Drawn before the planet, whose pixels
+/// hide whatever passes behind it. A pure function of the clock.
+fn distant_war(canvas: &mut Canvas, w: i32, dash_top: i32, tick: u64) {
+    let (dw, dh) = ((w * 2) as f32, (dash_top * 4) as f32);
+    let t = tick as f32 / 60.0;
+    let far = |c: Rgb, k: f32| palette::rgb(palette::lerp((10, 14, 26), c, k));
+    for i in 0..7u32 {
+        let side = if i % 2 == 0 { Side::Amber } else { Side::Jade };
+        let dir = if side == Side::Amber { 1.0 } else { -1.0 };
+        let speed = 3.0 + (i * 7 % 5) as f32 * 1.6;
+        let y = (dh * (0.12 + 0.72 * ((i as f32 * 0.618).fract()))).round();
+        let span = dw + 40.0;
+        let run = (i as f32 * 53.0 + speed * t) % span - 20.0;
+        let x = if dir > 0.0 { run } else { dw - run };
+        let [hull, high, engine] = sprites::side_colors(side);
+        // a few dots: nose, hull, a fin, and a flicker of engine behind
+        let dot = |canvas: &mut Canvas, dx: f32, dy: f32, c: Color| canvas.dot((x + dx * dir) as i32, (y + dy) as i32, c);
+        dot(canvas, 0.0, 0.0, far(high, 0.75));
+        dot(canvas, -1.0, 0.0, far(hull, 0.7));
+        dot(canvas, -2.0, 0.0, far(hull, 0.7));
+        dot(canvas, -2.0, -1.0, far(hull, 0.55));
+        if (tick / 5 + i as u64).is_multiple_of(2) {
+            dot(canvas, -3.0, 0.0, far(engine, 0.6));
+        }
+        // now and then a tracer, racing ahead
+        let phase = (t * 0.35 + i as f32 * 0.29).fract();
+        if phase < 0.25 {
+            let tx = 3.0 + phase * 160.0;
+            dot(canvas, tx, 0.0, far((255, 54, 64), 0.55));
+        }
+    }
+    // far-off flashes: a ring of dots swelling and fading
+    for k in 0..3u32 {
+        let cycle = t / 3.5 + k as f32 * 0.37;
+        let (n, phase) = (cycle.floor(), cycle.fract());
+        if phase > 0.3 {
+            continue;
+        }
+        let hash = |m: f32| ((n * 12.9898 + k as f32 * 78.233 + m).sin() * 43758.547).fract().abs();
+        let (fx, fy) = (hash(1.0) * dw, hash(2.0) * dh * 0.9);
+        let r = phase / 0.3 * 5.0 + 1.0;
+        let c = far((255, 200, 120), 0.6 * (1.0 - phase / 0.3));
+        for j in 0..12 {
+            let a = j as f32 / 12.0 * std::f32::consts::TAU;
+            canvas.dot((fx + a.cos() * r) as i32, (fy + a.sin() * r * 0.8) as i32, c);
+        }
+    }
+}
 
 /// A banded gas giant with a tilted ring, out of the window, lit from the
 /// left. Half-block pixels for the body, Braille dots for the ring. `w` and
@@ -84,6 +137,7 @@ pub fn draw(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game, c: &
             canvas.dot(s.x as i32, s.y as i32, palette::STAR[layer]);
         }
     }
+    distant_war(canvas, w, dash_top, game.tick);
     planet(canvas, w, dash_top, game.tick);
     // window struts, in dots: from the top corners down to the dashboard
     let (dw, dt) = (w * 2, dash_top * 4);
