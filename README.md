@@ -48,7 +48,9 @@ too, so one player can do it all. Only SDL-mapped pads are used;
 - **Gates:** three at the end of every sector, and only one leads closer to
   home. A wrong gate is a detour, never the end.
 - **Power-ups** fly in carrying a word: type it to claim the power-up, and
-  don't shoot it. The words walk the keyboard row by row as you go.
+  don't shoot it. The words walk the keyboard row by row as you go. Ships you
+  shoot down sometimes leave one behind too (a small glowing diamond, no
+  word): fly into it. Bigger ships drop more often; carriers always do.
 - **The war:** two sides fighting each other as much as you. Watch for the
   interceptor's flash, the lancer's warning line, and the jammer that
   scrambles your echoes.

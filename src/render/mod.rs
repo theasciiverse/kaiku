@@ -123,6 +123,9 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
     for p in &game.pods {
         sprites::draw_pod(canvas, p.kind, p.hp, p.flash > 0.0 && p.hp < crate::game::powerup::POD_HP, px(p.x), px(p.y), game.tick);
     }
+    for d in &game.drops {
+        sprites::draw_drop(canvas, d.kind, px(d.x), px(d.y), game.tick);
+    }
     if let Some(d) = &game.powers.drone {
         sprites::draw_drone(canvas, px(d.x), px(d.y), game.tick);
     }

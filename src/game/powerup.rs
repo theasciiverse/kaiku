@@ -318,3 +318,73 @@ mod power_tests {
         assert_eq!(p.owned(), [true, false, false, true, false, false]);
     }
 }
+
+/// A power-up a destroyed ship left behind: no word, the pilot flies into it.
+/// It drifts with the tunnel until collected or gone.
+#[derive(Clone, Debug)]
+pub struct Drop {
+    pub kind: PowerUp,
+    pub x: f32,
+    pub y: f32,
+    base_y: f32,
+    age: f32,
+    pub done: bool,
+}
+
+/// Drop size in dots (3×3 half-block pixels), and how they drift.
+pub const DROP_SIZE: f32 = 6.0;
+const DROP_DRIFT: f32 = 14.0;
+/// What drops: weighted toward shields, bombs and weapons.
+const DROP_WEIGHTS: [(PowerUp, f32); 6] = [
+    (PowerUp::Shield, 1.6),
+    (PowerUp::Bomb, 1.2),
+    (PowerUp::Spread, 1.0),
+    (PowerUp::Rapid, 1.0),
+    (PowerUp::Drone, 0.5),
+    (PowerUp::Slow, 0.4),
+];
+
+impl Drop {
+    /// Maybe a drop where a ship died, by its chance.
+    pub fn roll(chance: f32, x: f32, y: f32, rng: &mut Rng) -> Option<Drop> {
+        if rng.unit() >= chance {
+            return None;
+        }
+        let total: f32 = DROP_WEIGHTS.iter().map(|w| w.1).sum();
+        let mut roll = rng.unit() * total;
+        let kind = DROP_WEIGHTS.iter().find(|(_, wt)| {
+            roll -= wt;
+            roll <= 0.0
+        });
+        let kind = kind.map_or(PowerUp::Shield, |k| k.0);
+        let (x, y) = (x - DROP_SIZE / 2.0, y - DROP_SIZE / 2.0);
+        Some(Drop { kind, x, y, base_y: y, age: 0.0, done: false })
+    }
+
+    /// A little bigger than the sprite: easy to grab on the fly.
+    pub fn aabb(&self) -> Aabb {
+        Aabb::new(self.x - 2.0, self.y - 2.0, self.x + DROP_SIZE + 2.0, self.y + DROP_SIZE + 2.0)
+    }
+
+    pub fn update(&mut self, dt: f32, h: f32) {
+        self.age += dt;
+        self.x -= DROP_DRIFT * dt;
+        self.y = (self.base_y + (self.age * 2.4).sin() * 2.0).clamp(0.0, (h - DROP_SIZE).max(0.0));
+        if self.x + DROP_SIZE < 0.0 {
+            self.done = true;
+        }
+    }
+}
+
+#[cfg(test)]
+mod drop_tests {
+    use super::*;
+
+    #[test]
+    fn a_carrier_always_drops_and_a_scout_rarely_does() {
+        let mut rng = Rng::new(2);
+        assert!((0..50).all(|_| Drop::roll(1.0, 50.0, 20.0, &mut rng).is_some()));
+        let scouts = (0..1000).filter(|_| Drop::roll(0.04, 50.0, 20.0, &mut rng).is_some()).count();
+        assert!((15..80).contains(&scouts), "{scouts} in 1000");
+    }
+}

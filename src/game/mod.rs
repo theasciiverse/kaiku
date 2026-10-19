@@ -25,7 +25,7 @@ use cockpit::Cockpit;
 use cue::Cue;
 use enemy::{Action, Enemy, Kind, Side};
 use fx::{Particle, Tint};
-use powerup::{Pod, PodSpawner, PowerUp, Powers};
+use powerup::{Drop, Pod, PodSpawner, PowerUp, Powers};
 use rng::Rng;
 use route::Route;
 use sector::{Phase, Sector};
@@ -129,6 +129,8 @@ pub struct Game {
     pub chatter: Chatter,
     pub typing: Typing,
     pub pods: Vec<Pod>,
+    /// power-ups destroyed ships left behind, for the pilot to fly into
+    pub drops: Vec<Drop>,
     pub powers: Powers,
     /// seconds since the last smart bomb, for its flash
     pub bomb_t: f32,
@@ -179,6 +181,7 @@ impl Game {
             chatter: Chatter::new(),
             typing: Typing::default(),
             pods: Vec::new(),
+            drops: Vec::new(),
             powers: Powers::default(),
             bomb_t: 10.0,
             power_note: None,
@@ -414,6 +417,27 @@ impl Game {
                 self.shots.push(Shot::new(x, y, a.cos() * ENEMY_SHOT_SPEED, a.sin() * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
             }
         }
+        for e in self.enemies.iter().filter(|e| e.hp == 0 && e.by_player) {
+            let (cx, cy) = e.aabb().center();
+            if let Some(d) = Drop::roll(e.kind.drop_chance(), cx, cy, &mut self.rng) {
+                log::debug!("drop {:?} from {:?}", d.kind, e.kind);
+                self.drops.push(d);
+            }
+        }
+        for d in &mut self.drops {
+            d.update(war_dt, self.h);
+        }
+        if self.state == State::Flight {
+            let ship = self.ship.aabb();
+            let grabbed: Vec<PowerUp> = self.drops.iter_mut().filter(|d| !d.done && d.aabb().overlaps(&ship)).map(|d| {
+                d.done = true;
+                d.kind
+            }).collect();
+            for kind in grabbed {
+                self.collect(kind);
+            }
+        }
+        self.drops.retain(|d| !d.done);
         for e in self.enemies.iter().filter(|e| e.hp == 0) {
             self.cues.push(match e.kind {
                 Kind::Scout | Kind::Interceptor => Cue::Kill,
@@ -477,6 +501,19 @@ impl Game {
         }
     }
 
+    /// The pilot flies into a drop: the power-up, no typing needed.
+    fn collect(&mut self, kind: PowerUp) {
+        log::info!("collected a {kind:?} drop");
+        self.score += 100;
+        self.stats.pods += 1;
+        self.powers.take(kind, (self.ship.x, self.ship.y));
+        if kind == PowerUp::Shield {
+            self.ship.shield = 1.0;
+        }
+        self.cues.push(Cue::Claimed);
+        self.power_note = Some((format!("+ {}", kind.name()), 2.5));
+    }
+
     fn claim(&mut self, pod: Pod) {
         log::info!("claimed {:?} with {:?}", pod.kind, pod.word);
         self.score += 25 * pod.word.len() as u32;
@@ -525,6 +562,7 @@ impl Game {
         self.cues.push(Cue::Bomb);
         for e in self.enemies.iter_mut().filter(|e| e.x < self.w && e.hp > 0) {
             e.hp = 0;
+            e.by_player = true;
             let m = self.chain.link();
             self.score += e.kind.points() * m;
             self.stats.kills += 1;
@@ -587,6 +625,7 @@ impl Game {
         self.enemies.clear();
         self.shots.clear();
         self.pods.clear();
+        self.drops.clear();
         self.typing = Typing::default();
         self.set_state(State::Turn);
     }
@@ -726,6 +765,7 @@ impl Game {
                     let (cx, cy) = e.aabb().center();
                     fx::burst(&mut self.particles, cx, cy, 18, 50.0, Tint::Side(e.side), &mut self.rng);
                     if owner == Owner::Player {
+                        e.by_player = true;
                         let m = self.chain.link();
                         self.score += e.kind.points() * m;
                         self.stats.kills += 1;
@@ -1250,5 +1290,33 @@ mod tests {
         }
         let after: Vec<f32> = g.stars.stars.iter().map(|s| s.x).collect();
         assert_eq!(before, after, "the ship is adrift, not flying");
+    }
+
+    #[test]
+    fn a_carrier_shot_down_leaves_a_drop_the_pilot_can_fly_into() {
+        let mut g = game();
+        g.enemies.push(Enemy::of(Kind::Carrier, Side::Jade, 100.0, 30.0, 0.0, &mut Rng::new(1)));
+        g.enemies[0].hp = 1;
+        let c = g.enemies[0].aabb().center();
+        g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Player));
+        g.update(&Controls::default());
+        assert_eq!(g.drops.len(), 1, "a carrier always drops");
+        let d = g.drops[0].clone();
+        g.ship.x = d.x - 6.0;
+        g.ship.y = d.y - 3.0;
+        let pods = g.stats.pods;
+        g.update(&Controls::default());
+        assert!(g.drops.is_empty() && g.stats.pods == pods + 1, "flown into, collected");
+    }
+
+    #[test]
+    fn the_wars_own_kills_leave_nothing() {
+        let mut g = game();
+        g.enemies.push(Enemy::of(Kind::Carrier, Side::Jade, 100.0, 30.0, 0.0, &mut Rng::new(1)));
+        g.enemies[0].hp = 1;
+        let c = g.enemies[0].aabb().center();
+        g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Enemy(Side::Amber)));
+        g.update(&Controls::default());
+        assert!(g.drops.is_empty());
     }
 }

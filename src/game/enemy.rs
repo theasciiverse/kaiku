@@ -63,6 +63,19 @@ impl Kind {
         }
     }
 
+    /// The chance a kill leaves a power-up behind: bigger ships, better odds.
+    pub fn drop_chance(self) -> f32 {
+        match self {
+            Kind::Scout => 0.04,
+            Kind::Interceptor => 0.08,
+            Kind::Mine => 0.10,
+            Kind::Gunship => 0.20,
+            Kind::Lancer => 0.25,
+            Kind::Jammer => 0.5,
+            Kind::Carrier => 1.0,
+        }
+    }
+
     pub fn points(self) -> u32 {
         match self {
             Kind::Scout => 100,
@@ -127,6 +140,9 @@ pub struct Enemy {
     pub hp: u8,
     /// seconds of white hit flash left
     pub flash: f32,
+    /// destroyed by the player (gun or bomb), not by the war: such a kill
+    /// may leave a power-up behind
+    pub by_player: bool,
     base_y: f32,
     phase: f32,
     age: f32,
@@ -162,6 +178,7 @@ impl Enemy {
             x,
             y,
             hp: kind.hp(),
+            by_player: false,
             flash: 0.0,
             base_y: y,
             phase,

@@ -26,6 +26,20 @@ pub const POWERUPS: [(&str, [&str; 4]); 6] = [
 
 /// A power-up pod: a capsule whose core shows what it holds. 4×3 pixels.
 pub const POD: [&str; 3] = [".oo.", "oXXo", ".oo."];
+/// A power-up a ship left behind: a small diamond, no word on it. 3×3 pixels.
+pub const DROP: [&str; 3] = [".o.", "oXo", ".o."];
+
+/// A drop pulses between its colour and white, so it catches the eye.
+pub fn draw_drop(canvas: &mut Canvas, kind: PowerUp, x: i32, y: i32, tick: u64) {
+    let core = power_color(kind);
+    let glint = if (tick / 8).is_multiple_of(2) { (255, 255, 255) } else { core };
+    draw_with(canvas, &DROP, x, y, |c| match c {
+        'o' => Some(glint),
+        'X' => Some(core),
+        _ => None,
+    });
+}
+
 /// The escort drone, nose right. 4×2 pixels.
 pub const DRONE: [&str; 2] = [".cw.", "cbwy"];
 
