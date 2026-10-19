@@ -45,10 +45,12 @@ impl Ship {
     /// Moves within the field; returns true when the gun fires this tick, at
     /// most once every `interval` seconds.
     pub fn update(&mut self, c: &Controls, dt: f32, w: f32, h: f32, interval: f32) -> bool {
-        let (mut dx, mut dy) = (c.dx as f32, c.dy as f32);
-        if dx != 0.0 && dy != 0.0 {
-            dx *= std::f32::consts::FRAC_1_SQRT_2;
-            dy *= std::f32::consts::FRAC_1_SQRT_2;
+        let (mut dx, mut dy) = (c.dx.clamp(-1.0, 1.0), c.dy.clamp(-1.0, 1.0));
+        // never faster on the diagonal than straight
+        let len = (dx * dx + dy * dy).sqrt();
+        if len > 1.0 {
+            dx /= len;
+            dy /= len;
         }
         self.x += dx * SPEED * dt;
         self.y += dy * SPEED * dt;

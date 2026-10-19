@@ -41,13 +41,19 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     chrome::border(buf, l.frame);
     panel::receiver(buf, l.receiver, game);
     panel::powerups(buf, l.powerups, &game.powers.owned(), game.tick);
+    // with a pad in, two can play: say who does what
+    let note = match (&input.pad_name, input.mode_note()) {
+        (Some(_), Some(m)) => Some(format!("PILOT · pad   COMMS · keys  ·  {m}")),
+        (Some(_), None) => Some("PILOT · pad   COMMS · keys".to_string()),
+        (None, m) => m.map(str::to_string),
+    };
     let hud = chrome::Hud {
         shield: game.ship.shield,
         lives: game.ship.lives,
         bombs: game.powers.bombs,
         score: game.score,
         multiplier: game.chain.multiplier(),
-        note: input.mode_note(),
+        note: note.as_deref(),
     };
     chrome::hud(buf, l.hud, &hud);
 
@@ -286,8 +292,8 @@ mod tests {
         game.resize(play.width, play.height);
         // twelve seconds of flying up and down, firing, so the war has arrived
         for t in 0..720 {
-            let dy = if (t / 60) % 2 == 0 { 1 } else { -1 };
-            game.update(&Controls { dx: 0, dy, fire: true });
+            let dy = if (t / 60) % 2 == 0 { 1.0 } else { -1.0 };
+            game.update(&Controls { dx: 0.0, dy, fire: true });
         }
         let input = Input::with_mode(Mode::Timing);
         term.draw(|f| draw(f, &game, &input)).unwrap();
@@ -502,8 +508,8 @@ mod tests {
         game.resize(play.width, play.height);
         game.start_at(4);
         for t in 0..60 * 40 {
-            let dy = if (t / 60) % 2 == 0 { 1 } else { -1 };
-            game.update(&Controls { dx: 0, dy, fire: true });
+            let dy = if (t / 60) % 2 == 0 { 1.0 } else { -1.0 };
+            game.update(&Controls { dx: 0.0, dy, fire: true });
             game.ship.grace = 1.0;
         }
         let mut term = Terminal::new(TestBackend::new(200, 60)).unwrap();
@@ -511,7 +517,7 @@ mod tests {
         let n = 300;
         let t0 = std::time::Instant::now();
         for _ in 0..n {
-            game.update(&Controls { dx: 0, dy: 0, fire: true });
+            game.update(&Controls { dx: 0.0, dy: 0.0, fire: true });
             term.draw(|f| draw(f, &game, &input)).unwrap();
         }
         let per = t0.elapsed() / n;
@@ -544,7 +550,7 @@ mod tests {
             game.start_at(4);
             for t in 0..60 * 62 {
                 game.ship.grace = 1.0;
-                game.update(&Controls { dx: 0, dy: if (t / 50) % 2 == 0 { 1 } else { -1 }, fire: true });
+                game.update(&Controls { dx: 0.0, dy: if (t / 50) % 2 == 0 { 1.0 } else { -1.0 }, fire: true });
                 if t % 600 == 0 {
                     frame(&game, w, h);
                 }

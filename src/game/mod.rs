@@ -719,7 +719,7 @@ mod tests {
     #[test]
     fn the_ship_stays_in_the_field_and_fires() {
         let mut g = game();
-        let c = Controls { dx: 1, dy: -1, fire: true };
+        let c = Controls { dx: 1.0, dy: -1.0, fire: true };
         for _ in 0..30 {
             g.update(&c);
         }
@@ -781,8 +781,8 @@ mod tests {
         let mut g = game();
         // three minutes of flying in circles and firing
         for t in 0..60 * 180 {
-            let dy = if (t / 90) % 2 == 0 { 1 } else { -1 };
-            g.update(&Controls { dx: 0, dy, fire: true });
+            let dy = if (t / 90) % 2 == 0 { 1.0 } else { -1.0 };
+            g.update(&Controls { dx: 0.0, dy, fire: true });
         }
         assert!(g.enemies.len() <= 20 && g.shots.len() < 400 && g.particles.len() < 2000);
         assert!(g.score > 0, "something got shot down");
@@ -981,7 +981,7 @@ mod tests {
                 }
                 _ => {}
             }
-            g.update(&Controls { dx: 0, dy: 0, fire: true });
+            g.update(&Controls { dx: 0.0, dy: 0.0, fire: true });
         }
         assert_eq!(g.state, State::Home, "stuck in {:?} at sector {}", g.state, g.sector.number);
         assert_eq!(g.stats.true_jumps as usize, route::START_DISTANCE);
@@ -1002,15 +1002,15 @@ mod tests {
                 g.sector = Sector::new(level, 0.0, &mut Rng::new(seed));
                 g.terrain = Terrain::new(level, &mut Rng::new(seed));
                 let mut t = 0;
-                let mut dy = 1;
+                let mut dy = 1.0;
                 while g.state == State::Flight && t < 60 * 60 * 5 {
                     // weave, turning back before the walls, as a player would
                     let b = g.ship.aabb();
                     let (top, bottom) = g.terrain.depth(b.x1);
                     if (t % 70 == 0) || b.y0 < top + 3.0 || b.y1 > g.h - bottom - 3.0 {
-                        dy = if b.y0 < top + 3.0 { 1 } else if b.y1 > g.h - bottom - 3.0 { -1 } else { -dy };
+                        dy = if b.y0 < top + 3.0 { 1.0 } else if b.y1 > g.h - bottom - 3.0 { -1.0 } else { -dy };
                     }
-                    g.update(&Controls { dx: 0, dy, fire: true });
+                    g.update(&Controls { dx: 0.0, dy, fire: true });
                     // the sector never ends: keep the war coming
                     if g.sector.phase == Phase::Portals {
                         g.sector = Sector::new(level, 0.0, &mut Rng::new(t as u64));

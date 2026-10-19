@@ -1,6 +1,7 @@
 mod game;
 mod highscore;
 mod input;
+mod pad;
 mod render;
 
 use game::Game;
@@ -62,6 +63,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     let mut game = Game::new(seed);
     game.best = highscore::load();
     start(&mut game);
+    let mut pad = pad::Pad::open();
     // the best score is saved once per run, when the run ends on a record
     let mut saved = false;
     let mut input = Input::new(kitty);
@@ -69,6 +71,19 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     while !input.quit {
         let play = render::play_area(terminal.size()?.into());
         game.resize(play.width, play.height);
+        // the pad: Start pauses (and resumes); B or a bumper is the smart bomb
+        // in flight; A confirms everywhere else (the map, flying again, the crawl)
+        pad.poll();
+        input.pad_name = pad.name.clone();
+        let presses = pad.take_presses();
+        if presses.pause {
+            input.confirm_quit = !input.confirm_quit;
+        }
+        match game.state {
+            game::State::Flight => input.bomb |= presses.bomb,
+            game::State::Cockpit => {}
+            _ => input.bomb |= presses.confirm,
+        }
         terminal.draw(|f| render::draw(f, &game, &input))?;
         if event::poll(next.saturating_duration_since(Instant::now()))? {
             loop {
@@ -106,7 +121,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 if std::mem::take(&mut input.drop_lock) {
                     game.drop_lock();
                 }
-                game.update(&input.controls(now));
+                game.update(&input::Input::with_pad(input.controls(now), &pad.state));
             }
             input.typed.clear();
             input.bomb = false;

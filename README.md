@@ -23,6 +23,19 @@ cargo run --release
 | Enter | smart bomb; on the map, fly on |
 | Esc | pause (y quits) |
 
+**Two players:** plug in a gamepad and one flies while the other types.
+
+| Gamepad (the pilot) | |
+|---|---|
+| Left stick or d-pad | fly (the stick in proportion) |
+| A | fire (hold); confirm on the map and the end screens |
+| B or a bumper | smart bomb |
+| Start | pause |
+
+The keyboard (comms) types the echoes and power-up words; it can still fly
+too, so one player can do it all. Only SDL-mapped pads are used;
+`KAIKU_ANY_PAD=1` accepts any.
+
 - **Echoes** drift in garbled and flicker into clear. Type the first letter
   to lock on, then the rest. Spaces fill themselves in. A decoded echo is
   analysed; a jammed one rules out its gate.

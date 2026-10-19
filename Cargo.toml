@@ -8,6 +8,12 @@ description = "Kaiku — Echoes Home: a sideways typing shmup for the terminal (
 ratatui = "0.30"
 log = "0.4"
 env_logger = "0.11"
+gilrs = { version = "0.11", optional = true }
+
+[features]
+# gamepads are first-class in Asciiverse; build without with --no-default-features
+default = ["gamepad"]
+gamepad = ["dep:gilrs"]
 
 [profile.release]
 debug = 1

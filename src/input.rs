@@ -125,10 +125,10 @@ const VIM: usize = 1;
 /// What the simulation reads each tick.
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct Controls {
-    /// -1 left, 1 right
-    pub dx: i8,
-    /// -1 up, 1 down
-    pub dy: i8,
+    /// -1 left .. 1 right: the keys give whole steps, a pad's stick anything between
+    pub dx: f32,
+    /// -1 up .. 1 down
+    pub dy: f32,
     pub fire: bool,
 }
 
@@ -154,6 +154,8 @@ pub struct Input {
     pub quit: bool,
     /// Esc was pressed: show the quit question and wait for y.
     pub confirm_quit: bool,
+    /// the gamepad in use, if one is connected: two can play, pilot and comms
+    pub pad_name: Option<String>,
 }
 
 impl Input {
@@ -184,6 +186,7 @@ impl Input {
             bomb: false,
             quit: false,
             confirm_quit: false,
+            pad_name: None,
         }
     }
 
@@ -194,6 +197,14 @@ impl Input {
             Mode::Timing => Some("keys: timing"),
             Mode::Latched => Some("keys: latched"),
         }
+    }
+
+    /// The flight controls with a pad's folded in: whichever asks for more on
+    /// an axis wins, and either can fire. With a pad in, two can play: one
+    /// flies on the pad while the other types.
+    pub fn with_pad(c: Controls, pad: &crate::pad::PadState) -> Controls {
+        let pick = |key: f32, stick: f32| if stick.abs() > key.abs() { stick } else { key };
+        Controls { dx: pick(c.dx, pad.x), dy: pick(c.dy, pad.y), fire: c.fire || pad.fire }
     }
 
     pub fn on_key(&mut self, k: KeyEvent, now: Instant) {
@@ -282,8 +293,8 @@ impl Input {
             Mode::Exact => {
                 let on = |d: Dir| self.down[d.index()].iter().any(|&b| b);
                 Controls {
-                    dx: on(Dir::Right) as i8 - on(Dir::Left) as i8,
-                    dy: on(Dir::Down) as i8 - on(Dir::Up) as i8,
+                    dx: on(Dir::Right) as i8 as f32 - on(Dir::Left) as i8 as f32,
+                    dy: on(Dir::Down) as i8 as f32 - on(Dir::Up) as i8 as f32,
                     fire: self.fire_down,
                 }
             }
@@ -305,9 +316,9 @@ impl Input {
                     }
                 };
                 let fire = self.hold_fire.held(now, &self.rep) || self.hold_fire.last.is_some_and(|t| now.duration_since(t) <= FIRE_LINGER);
-                Controls { dx: axis(Dir::Left, Dir::Right), dy: axis(Dir::Up, Dir::Down), fire }
+                Controls { dx: axis(Dir::Left, Dir::Right) as f32, dy: axis(Dir::Up, Dir::Down) as f32, fire }
             }
-            Mode::Latched => Controls { dx: self.latch_x, dy: self.latch_y, fire: self.fire_latched },
+            Mode::Latched => Controls { dx: self.latch_x as f32, dy: self.latch_y as f32, fire: self.fire_latched },
         }
     }
 }
@@ -359,11 +370,11 @@ mod tests {
         press(&mut i, KeyCode::Char('h'), t0);
         press(&mut i, KeyCode::Char('E'), t0);
         assert_eq!(i.typed, vec!['h', 'e']);
-        assert_eq!(i.controls(ms(t0, 10)).dx, 0, "a plain h is text, not flight");
+        assert_eq!(i.controls(ms(t0, 10)).dx, 0.0, "a plain h is text, not flight");
         ctrl(&mut i, 'h', ms(t0, 20));
-        assert_eq!(i.controls(ms(t0, 30)).dx, -1);
+        assert_eq!(i.controls(ms(t0, 30)).dx, -1.0);
         ctrl(&mut i, 'j', ms(t0, 40));
-        assert_eq!(i.controls(ms(t0, 50)).dy, 1);
+        assert_eq!(i.controls(ms(t0, 50)).dy, 1.0);
         assert_eq!(i.typed.len(), 2, "Ctrl+letters never reach the typing layer");
     }
 
@@ -395,8 +406,8 @@ mod tests {
         let t0 = Instant::now();
         let mut i = Input::with_mode(Mode::Timing);
         press(&mut i, KeyCode::Right, t0);
-        assert_eq!(i.controls(ms(t0, 100)).dx, 1);
-        assert_eq!(i.controls(ms(t0, 400)).dx, 0, "no repeat arrived: it was a tap");
+        assert_eq!(i.controls(ms(t0, 100)).dx, 1.0);
+        assert_eq!(i.controls(ms(t0, 400)).dx, 0.0, "no repeat arrived: it was a tap");
     }
 
     #[test]
@@ -407,9 +418,9 @@ mod tests {
         for k in 0..10 {
             press(&mut i, KeyCode::Right, ms(t0, 500 + 30 * k));
         }
-        assert_eq!(i.controls(ms(t0, 790)).dx, 1);
+        assert_eq!(i.controls(ms(t0, 790)).dx, 1.0);
         press(&mut i, KeyCode::Left, ms(t0, 800));
-        assert_eq!(i.controls(ms(t0, 810)).dx, -1);
+        assert_eq!(i.controls(ms(t0, 810)).dx, -1.0);
     }
 
     #[test]
@@ -417,10 +428,10 @@ mod tests {
         let t0 = Instant::now();
         let mut i = Input::with_mode(Mode::Exact);
         ctrl(&mut i, 'l', t0);
-        assert_eq!(i.controls(ms(t0, 900)).dx, 1);
+        assert_eq!(i.controls(ms(t0, 900)).dx, 1.0);
         // Ctrl comes up before l: the release has no modifier
         key(&mut i, KeyCode::Char('l'), KeyModifiers::NONE, KeyEventKind::Release, ms(t0, 950));
-        assert_eq!(i.controls(ms(t0, 951)).dx, 0);
+        assert_eq!(i.controls(ms(t0, 951)).dx, 0.0);
         assert!(i.typed.is_empty());
     }
 
@@ -430,7 +441,7 @@ mod tests {
         let mut i = Input::with_mode(Mode::Exact);
         ctrl(&mut i, 'k', t0);
         key(&mut i, KeyCode::Modifier(ModifierKeyCode::LeftControl), KeyModifiers::NONE, KeyEventKind::Release, ms(t0, 100));
-        assert_eq!(i.controls(ms(t0, 110)).dy, 0);
+        assert_eq!(i.controls(ms(t0, 110)).dy, 0.0);
     }
 
     #[test]
@@ -438,9 +449,9 @@ mod tests {
         let t0 = Instant::now();
         let mut i = Input::with_mode(Mode::Latched);
         press(&mut i, KeyCode::Down, t0);
-        assert_eq!(i.controls(ms(t0, 5000)).dy, 1);
+        assert_eq!(i.controls(ms(t0, 5000)).dy, 1.0);
         press(&mut i, KeyCode::Down, t0);
-        assert_eq!(i.controls(t0).dy, 0, "the same key again stops");
+        assert_eq!(i.controls(t0).dy, 0.0, "the same key again stops");
         press(&mut i, KeyCode::Char(' '), t0);
         assert!(i.controls(t0).fire);
     }
@@ -457,5 +468,12 @@ mod tests {
         press(&mut i, KeyCode::Esc, t0);
         press(&mut i, KeyCode::Char('y'), t0);
         assert!(i.quit);
+    }
+
+    #[test]
+    fn a_pad_and_the_keys_fly_together() {
+        let keys = Controls { dx: 1.0, dy: 0.0, fire: false };
+        let pad = crate::pad::PadState { x: -0.4, y: 0.6, fire: true };
+        assert_eq!(Input::with_pad(keys, &pad), Controls { dx: 1.0, dy: 0.6, fire: true });
     }
 }

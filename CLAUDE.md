@@ -68,6 +68,8 @@ of ideas, not a spec. Don't hold the design to them.
   as line feed; deal with that when movement is built.
 - **First version: English only, and it teaches typing.** Foreign languages
   are for later, if at all.
+- **Two players:** a gamepad flies (the pilot) while the keyboard types (comms).
+  Plug in a pad and it's co-op; either alone can still do both.
 - **Name:** Kaiku (Finnish for "echo").
 
 ## Ideas on the table (not decided)
@@ -84,6 +86,9 @@ of ideas, not a spec. Don't hold the design to them.
   designing any terminal infrastructure.
 
 ## Build and run
+
+Gamepad support (on by default, via gilrs) needs `pkg-config` and
+`libudev-dev`; `cargo build --no-default-features` builds without it.
 
 ```
 cargo run --release                     # play
