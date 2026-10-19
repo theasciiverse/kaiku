@@ -2,6 +2,7 @@ mod audio;
 mod game;
 mod highscore;
 mod input;
+mod music;
 mod pad;
 mod render;
 
@@ -65,7 +66,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     game.best = highscore::load();
     start(&mut game);
     let mut pad = pad::Pad::open();
-    let mut audio = audio::Audio::new(std::env::args().any(|a| a == "--mute"));
+    let mut audio = audio::Audio::new(std::env::args().any(|a| a == "--mute"), std::env::args().any(|a| a == "--no-music"));
     // the best score is saved once per run, when the run ends on a record
     let mut saved = false;
     let mut input = Input::new(kitty);
@@ -150,6 +151,7 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
             audio.play(cue);
             pad.feel(cue);
         }
+        audio.music(music::ctrl_for(&game));
         if game.finished() && game.record && !saved {
             highscore::save(game.best);
             saved = true;

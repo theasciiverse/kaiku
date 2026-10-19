@@ -23,7 +23,7 @@ cargo run --release
 | Enter | smart bomb; on the map, fly on |
 | Tab | dash: a burst of speed you can't be hit in |
 | Esc | pause (y quits) |
-| F8 | sound on/off (`--mute` starts silent) |
+| F8 | sound and music on/off (`--mute` starts silent, `--no-music` keeps only the effects) |
 
 **Two players:** plug in a gamepad and one flies while the other types.
 

@@ -177,6 +177,10 @@ mod synth {
 }
 
 pub struct Audio {
+    /// what the music is told each frame; it plays on the same mixer
+    music: std::sync::Arc<std::sync::Mutex<crate::music::Ctrl>>,
+    /// `--no-music`: effects only
+    pub no_music: bool,
     #[cfg(feature = "sound")]
     sink: Option<rodio::MixerDeviceSink>,
     #[cfg(feature = "sound")]
@@ -188,7 +192,8 @@ pub struct Audio {
 }
 
 impl Audio {
-    pub fn new(muted: bool) -> Audio {
+    pub fn new(muted: bool, no_music: bool) -> Audio {
+        let music = crate::music::shared();
         #[cfg(feature = "sound")]
         {
             use std::num::NonZero;
@@ -210,10 +215,21 @@ impl Audio {
             } else {
                 Default::default()
             };
-            Audio { sink, bank, last_shot: None, muted }
+            if let Some(s) = &sink {
+                s.mixer().add(rodio::Source::amplify(crate::music::Band::new(music.clone()), 0.5));
+            }
+            Audio { music, no_music, sink, bank, last_shot: None, muted }
         }
         #[cfg(not(feature = "sound"))]
-        Audio { muted }
+        Audio { music, no_music, muted }
+    }
+
+    /// Steers the music for this frame.
+    pub fn music(&mut self, mut ctrl: crate::music::Ctrl) {
+        ctrl.muted = self.muted || self.no_music;
+        if let Ok(mut c) = self.music.lock() {
+            *c = ctrl;
+        }
     }
 
     #[cfg_attr(not(feature = "sound"), allow(unused_variables))]
