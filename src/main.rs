@@ -104,8 +104,11 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
             loop {
                 if let Event::Key(k) = event::read()? {
                     log::debug!("key {:?}", k);
-                    // the demo plays itself: any key ends it
-                    if demo.is_some() && k.kind == event::KeyEventKind::Press {
+                    // the demo plays itself: any key ends it (but not a Ctrl
+                    // combination such as the ^D a closed stdin sends; Ctrl+C
+                    // still quits, as everywhere)
+                    let ctrl = k.modifiers.contains(event::KeyModifiers::CONTROL);
+                    if demo.is_some() && k.kind == event::KeyEventKind::Press && !ctrl {
                         input.quit = true;
                     }
                     input.on_key(k, Instant::now());
