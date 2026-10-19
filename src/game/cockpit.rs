@@ -65,6 +65,8 @@ impl Cockpit {
                         self.progress = 0;
                         self.step = if n + 1 < COMMANDS.len() { Step::Command(n + 1) } else { Step::Echo };
                         if self.step == Step::Echo {
+                            // the only thing to type: locked from the start, first letter legible
+                            self.echo.locked = true;
                             self.log.push("an echo · type what you read".to_string());
                         }
                     }

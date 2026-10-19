@@ -23,6 +23,7 @@ pub fn cells(e: &Echo, tick: u64) -> Vec<(char, Style)> {
         .map(|(i, ch)| {
             let (c, style) = match e.vis(i, tick) {
                 Vis::Typed => (ch, Style::default().fg(palette::rgb(SIGNAL[2])).add_modifier(Modifier::BOLD)),
+                Vis::Next => (ch, Style::default().fg(palette::TEXT).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
                 Vis::Clear { blink: false } => (ch, Style::default().fg(palette::rgb(SIGNAL[1]))),
                 Vis::Clear { blink: true } => (ch, Style::default().fg(palette::rgb(SIGNAL[0]))),
                 Vis::Garbled(h) => {

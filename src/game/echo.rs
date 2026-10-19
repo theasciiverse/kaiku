@@ -69,6 +69,8 @@ pub enum Verdict {
 pub enum Vis {
     /// already typed: clear for good
     Typed,
+    /// the letter to type next, while you're typing it out: always legible
+    Next,
     /// readable this moment; `blink` is the dim half of a flicker
     Clear { blink: bool },
     /// noise; the value picks the glyph
@@ -193,6 +195,10 @@ impl Echo {
         if letter < self.progress || self.state == EchoState::Decoded {
             return Vis::Typed;
         }
+        // typing it out: you never wait on a flicker for the letter you need
+        if letter == self.progress && (self.locked || self.progress > 0) {
+            return Vis::Next;
+        }
         let c = (self.clarity - self.jam).clamp(0.0, 1.0);
         let listened = (self.age * LISTEN_RATE).min(LISTEN_MAX);
         let period = ((2.4 - 1.2 * c) * 60.0) as u64;
@@ -305,5 +311,16 @@ mod tests {
         let fresh = readable(&e);
         e.update(20.0);
         assert!(readable(&e) > fresh, "{} vs {fresh}", readable(&e));
+    }
+
+    #[test]
+    fn the_next_letter_is_always_legible_while_typing() {
+        let mut e = echo("the eagle has landed", 0.0);
+        e.key('t');
+        for tick in 0..600 {
+            assert_eq!(e.vis(1, tick), Vis::Next, "the h, at tick {tick}");
+        }
+        let fresh = echo("the eagle", 0.0);
+        assert!((0..600).any(|t| fresh.vis(0, t) != Vis::Next), "an echo not yet started keeps its noise");
     }
 }
