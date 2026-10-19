@@ -19,6 +19,10 @@ use std::time::{Duration, Instant};
 const TICK: Duration = Duration::from_micros(16_667);
 
 fn main() -> io::Result<()> {
+    if std::env::args().any(|a| a == "--version") {
+        println!("kaiku {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     // Session logging: RUST_LOG=debug kaiku 2>kaiku.log
     env_logger::init();
     let mut terminal = ratatui::init();
