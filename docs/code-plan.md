@@ -1,4 +1,4 @@
-# Kaiku — Code Plan (v1)
+# Kaiku: Code Plan (v1)
 
 Rust + Ratatui, following Asciiverse conventions as Entity and tty-rex do:
 - `ratatui = "0.30"`, using its re-exported `ratatui::crossterm`.
@@ -49,9 +49,9 @@ docs/            design and research
     mode crossterm should decode `0x08` and `0x0A` as Ctrl+letter, as long
     as Backspace sends `0x7F` (most terminals). Verify this against the
     crossterm source once the crate is fetched.
-  - **Typed letters:** plain a–z with no Ctrl, `Press` only, queued with a
+  - **Typed letters:** plain a-z with no Ctrl, `Press` only, queued with a
     timestamp for the typing layer. Entity's kitty flags (1|2|8) are fine
-    here, because typing is a–z only.
+    here, because typing is a-z only.
 - **Determinism:** each sector is seeded, so tests can replay a sector.
 - **Data files** are embedded with `include_str!` for v1, and parsed with
   `toml` + `serde`.
@@ -62,18 +62,18 @@ docs/            design and research
 
 Each milestone ends playable and committed.
 
-1. **M0 — Skeleton:** the loop, input, and a ship that moves and shoots in an
+1. **M0 (Skeleton):** the loop, input, and a ship that moves and shoots in an
    empty starfield (Braille). Clean quit, panic hook, logging.
-2. **M1 — Shmup:** enemy formations from both sides, enemy fire, collisions,
+2. **M1 (Shmup):** enemy formations from both sides, enemy fire, collisions,
    the shield bar and lives, game over. A first pass at the chrome and HUD.
-3. **M2 — Echoes:** garbled echoes, flicker, typing lock and decode,
+3. **M2 (Echoes):** garbled echoes, flicker, typing lock and decode,
    clarity, end-of-sector portals.
-4. **M3 — Journey:** the turn animation, the route graph, the
+4. **M3 (Journey):** the turn animation, the route graph, the
    between-sector map, true and false portals changing the distance home,
    arrival home.
-5. **M4 — Power-ups:** word pods following the keyboard-row curve, and the
+5. **M4 (Power-ups):** word pods following the keyboard-row curve, and the
    power-up effects.
-6. **M5 — Intro:** the Metroid-style opening story crawl, then the
+6. **M5 (Intro):** the Metroid-style opening story crawl, then the
    receiver repair tutorial.
 7. **Built overnight (2026-10-18):** five more enemies, waves growing by
    sector, gate guards, tunnel walls, kill chains, run stats, high score,
@@ -84,7 +84,7 @@ Each milestone ends playable and committed.
 
 ## Tests
 
-- **input:** Entity's timing tests, carried over, plus a–z routing (Ctrl+h
+- **input:** Entity's timing tests, carried over, plus a-z routing (Ctrl+h
   moves, h types).
 - **typing:** lock rules, unique first letters, mistakes.
 - **echo:** garble is deterministic from a seed; typed letters stay clear.

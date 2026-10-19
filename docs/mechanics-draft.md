@@ -1,4 +1,4 @@
-# Kaiku — Mechanics Draft (v1)
+# Kaiku: Mechanics Draft (v1)
 
 First draft of how the game plays. It builds on the decisions in CLAUDE.md;
 anything marked *(default)* is a proposal waiting for a playtest. English
@@ -19,7 +19,7 @@ right portals, and fly through the war's crossfire until you're home.
 |---|---|
 | Arrows, Ctrl+h/j/k/l | Move (held; the input layer is adapted from Entity) |
 | Space | Shoot (held = auto-fire) |
-| a–z | Typing: lock and decode an echo, or claim a power-up |
+| a-z | Typing: lock and decode an echo, or claim a power-up |
 | Backspace | Drop the current lock |
 | Enter | Smart bomb *(default; a few per sector)* |
 | Esc | Pause or quit (asks first, as in Entity) |
@@ -34,7 +34,7 @@ A **sector** is one stage: one tunnel between two portals.
 1. **Flight.** The tunnel scrolls right to left. Fleets of the two warring
    sides cross it: some hunt you, some fight each other, and some just pass
    through, firing. You move and shoot. This is the plain shmup, at about
-   60–90 seconds a sector *(default)*.
+   60-90 seconds a sector *(default)*.
 2. **Power-ups.** Now and then a power-up pod drifts in, carrying a short
    word. Type the word to claim it. Shooting a pod destroys it, so keep your
    fire off it.
@@ -88,7 +88,7 @@ A **sector** is one stage: one tunnel between two portals.
   you can see.
 - **Mistakes:** a wrong key flashes the echo and costs a little clarity on
   it, but keeps the lock. Backspace drops the lock.
-- **Length:** short early (2–4 words), longer later. The very last echo,
+- **Length:** short early (2-4 words), longer later. The very last echo,
   arriving home, is perfectly clear.
 
 ## Typing as a skill curve
@@ -157,7 +157,7 @@ Enemy fleets don't carry words; only **power-ups** and **echoes** do.
 - **Shape:** a route graph that branches and rejoins, always moving forward.
   There are several equally short ways home.
 - **Length:** the shortest route is about 8 sectors *(default, tune by
-  playtest)*. Each false portal adds 1–2 detour sectors.
+  playtest)*. Each false portal adds 1-2 detour sectors.
 - **Sector names:** each sector has a four-letter name shown on the map,
   which doubles as a password to resume.
 - **The first fork sets the difficulty:** an easier or a harder way home.

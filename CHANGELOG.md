@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.0.0 — unreleased
+## 1.0.0 (unreleased)
 
-The first version of Kaiku — Echoes Home.
+The first version of Kaiku: Echoes Home.
 
 ### The game
 - A sideways shoot-'em-up with typing: fly and fight through an

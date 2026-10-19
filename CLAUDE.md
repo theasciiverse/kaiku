@@ -1,4 +1,4 @@
-# Kaiku — CLAUDE.md
+# Kaiku
 
 **Status:** Fresh start (2026-10-18). This file holds only what has been
 decided. Earlier plans (v0.1 vertical rain, v0.2 language-faction shmup) are
@@ -12,7 +12,7 @@ of ideas, not a spec. Don't hold the design to them.
 - **A fair mix of typing and playing:** moving and shooting matter as much
   as typing. Space shoots; arrows and Ctrl+h/j/k/l move; Ctrl and other
   non-letter keys are free for actions.
-- **Full title: Kaiku — Echoes Home.** The story: an interplanetary war is raging. A surge has
+- **Full title: *Kaiku: Echoes Home*.** The story: an interplanetary war is raging. A surge has
   thrown your ship far off course, and to get home you must find the right
   portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
@@ -61,7 +61,7 @@ of ideas, not a spec. Don't hold the design to them.
   gradient `╱╱╱` after titles, rounded borders, shimmering indicators.
   Crush is FSL-1.1-MIT (source-available, MIT after two years): read it
   for ideas (`internal/ui/logo`, `internal/ui/styles`), don't copy code.
-- **Typing is plain a–z.** No accents to type.
+- **Typing is plain a-z.** No accents to type.
 - **Movement:** arrow keys and Ctrl+h/j/k/l, on Asciiverse's held-key input
   layer (adapt `entity/src/input.rs`, as Ceres, Brickspire and Marble
   Recovery did). On legacy terminals Ctrl+H arrives as Backspace and Ctrl+J

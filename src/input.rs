@@ -11,7 +11,7 @@
 //! 3. **Latched**: a direction stays on until it is pressed again or reversed, and
 //!    Space toggles fire. Selected with `KAIKU_INPUT=latch`.
 //!
-//! Flight is arrows or Ctrl+h/j/k/l plus Space; plain letters a–z are text for the
+//! Flight is arrows or Ctrl+h/j/k/l plus Space; plain letters a-z are text for the
 //! typing layer. In raw mode crossterm decodes Ctrl+H (0x08) and Ctrl+J (0x0A) as
 //! Ctrl+letter, since Backspace sends 0x7F, so vim keys work on legacy terminals too.
 
@@ -145,7 +145,7 @@ pub struct Input {
     latch_x: i8,
     latch_y: i8,
     fire_latched: bool,
-    /// Letters typed since the typing layer last drained them, lowercase a–z.
+    /// Letters typed since the typing layer last drained them, lowercase a-z.
     pub typed: Vec<char>,
     /// Backspace: drop the typing lock.
     pub drop_lock: bool,

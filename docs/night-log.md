@@ -1,4 +1,4 @@
-# Night log — 2026-10-18
+# Night log, 2026-10-18
 
 You asked for work on other enemies, gameplay and other things overnight.
 This is what got done, what I decided on your behalf, and what to look at

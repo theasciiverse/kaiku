@@ -256,7 +256,7 @@ pub fn summary(buf: &mut Buffer, area: Rect, title: &str, lines: &[(String, Stri
 pub const CONTROLS: [[&str; 3]; 7] = [
     ["fly", "arrows · ctrl+hjkl", "stick · d-pad"],
     ["fire", "space (hold)", "bottom button"],
-    ["type echoes and words", "a–z", ""],
+    ["type echoes and words", "a-z", ""],
     ["drop the lock", "backspace", ""],
     ["smart bomb", "enter", "right button · LB"],
     ["dash", "tab", "left button · RB"],
@@ -273,7 +273,7 @@ pub fn controls(buf: &mut Buffer, area: Rect, foot: &str) {
     let h = CONTROLS.len() as u16 + 7;
     if area.width < w || area.height < h {
         // too small for the card: the essentials in one line
-        question(buf, area, &format!("fly · space fire · a–z type · tab dash · enter bomb  ·  {foot}"));
+        question(buf, area, &format!("fly · space fire · a-z type · tab dash · enter bomb  ·  {foot}"));
         return;
     }
     let x = area.x + (area.width - w) / 2;

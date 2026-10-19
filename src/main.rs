@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
     // probed once, before any input is read: the query answers on stdin
     let kitty = supports_keyboard_enhancement().unwrap_or(false);
     if kitty {
-        // typing is plain a–z, so reporting every key as an escape code costs nothing
+        // typing is plain a-z, so reporting every key as an escape code costs nothing
         let flags = KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
             | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
             | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES;

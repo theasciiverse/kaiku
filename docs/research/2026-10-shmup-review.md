@@ -1,4 +1,4 @@
-# Kaiku — Prior-Art Review (Oct 2026)
+# Kaiku: Prior-Art Review (Oct 2026)
 
 Input to the next CLAUDE.md revision. Three sources:
 
@@ -19,8 +19,8 @@ CLAUDE.md v0.1 describes **vertical** falling columns (NCMatrix rain). The new
 direction is a **sideways** shmup. Everything below argues for going
 horizontal:
 
-- Terminal cells are about 1:2. Width is the abundant dimension: 80–200+
-  columns of approach distance against 24–60 rows.
+- Terminal cells are about 1:2. Width is the abundant dimension: 80-200+
+  columns of approach distance against 24-60 rows.
 - Words read left to right, so a horizontal word is a horizontal object.
   Vertical rain has to stack letters or keep words short.
 - **Typespeed is already horizontal.** Words scroll left to right across
@@ -42,7 +42,7 @@ Source: `typespeed/src/typespeed.c`, `misc.c`, `rules/*`, `words/*`.
 | Field | Fixed 80×24. 22 word rows, one input row; widths are hardcoded (`79 - length`, `typespeed.c:603`) | Size to the real terminal. Never hardcode 80. |
 | Motion | Each tick, every word moves one cell to the right. `rate = score/step + minspeed` ticks per second, with `step = 175` and `minspeed = 3` (`cwords`, `:268-274`) | Difficulty is a single linear ramp driven by score. Simple, readable, and has no per-word variety. |
 | Spawning | A word is added when the total visible characters drop below `score/4 + 1`, or the word count is below `min words` (`:265`). Never a duplicate on screen (`addnewword`, `:220-229`) | Density is tied to the player's own performance. Steal this: it is already "aesthetic driven by game state." |
-| Colour | Colour by distance zone: safe (<50), warning (50–65), danger (>65) (`movewords`, `:613-649`) | Colour as proximity is the NCMatrix principle in miniature. |
+| Colour | Colour by distance zone: safe (<50), warning (50-65), danger (>65) (`movewords`, `:613-649`) | Colour as proximity is the NCMatrix principle in miniature. |
 | Matching | Type the whole word, then press Space or Enter. Matched against **every** word on screen. No prefix lock, no live highlight (`parseinput`, `:706-738`) | Too loose for a shmup: no targeting, no routing. Kaiku needs first-letter lock (§3). |
 | Scoring | Score += word length on a hit (`:714`). CPS = (score + words)/time. WPM = CPS×12. Typo ratio drives joke ranks ("Secretary", "TypoKing") | Length-as-payload is the right base. Joke ranks are cheap, beloved flavour. |
 | Failure | Game over after 10 words escape. Grace rule: if the last escaping word was being typed correctly, you still get its points (`:891-897`) | The grace rule is a nice touch; keep the idea of forgiving the last moment. |
@@ -104,8 +104,8 @@ Principles that apply across the genre:
 | **k-type** (ZType fork for Japanese) | Entries are `[display, typed]` pairs: show あ, type `a`. This is exactly the romaji fallback, and it generalises to "show the gloss, type the word." |
 | **Epistory / Nanotale** | Typed spell modifiers are lovely. But wave fights pin you in place with no defence except typing faster, which is the frustration Kaiku's gun floor exists to prevent. |
 | **The Textorcist** | The closest existing game: bullet-hell plus typing prayers. Reviewers agree that typing and dodging at once is the hard part, and for some it never clicked. **The biggest warning for Kaiku.** |
-| **Tux Typing — Fish Cascade** | Suffix match on a typed buffer: no lock, no backspace, wrong keys are just garbage. Extremely forgiving; a ready-made novice mode. Fall speed `0.92^(len-1)`, so long words move slower. |
-| **Tux Typing — Comet Zap** | Score is weighted by distance: early kills pay more. A miss costs points. |
+| **Tux Typing: Fish Cascade** | Suffix match on a typed buffer: no lock, no backspace, wrong keys are just garbage. Extremely forgiving; a ready-made novice mode. Fall speed `0.92^(len-1)`, so long words move slower. |
+| **Tux Typing: Comet Zap** | Score is weighted by distance: early kills pay more. A miss costs points. |
 | **Voidrunner, Type'EmUp** (itch.io) | Jam-scale horizontal typing shooters. Typed movement commands are too slow. No established hit in this niche: an opportunity, and also a sign the problem is hard. |
 
 ---
@@ -219,7 +219,7 @@ mixes held movement keys with typed accented text:
 - **Spaced repetition in two layers:**
   - *In-wave:* simple rotation; a recently missed word comes back sooner.
   - *Across runs:* FSRS via `rs-fsrs` (MIT, depends only on chrono) picks
-    each horde's 15–20-word pool and decides "known". Map results to FSRS
+    each horde's 15-20-word pool and decides "known". Map results to FSRS
     ratings: fast and clean = Easy, clean = Good, slow or corrected = Hard,
     missed = Again.
 
@@ -290,7 +290,7 @@ own lists.
   rather than fun. The MVP must test this first.
 - **Learning under load:** measure it with a before-and-after word quiz;
   don't assume it.
-- **Small pools against the first-letter rule:** 15–20 words with unique
+- **Small pools against the first-letter rule:** 15-20 words with unique
   live first letters limits how many words can be live at once. Check this
   against real word lists.
 - **Terminal variance:** cell aspect, Braille rendering, kana width.

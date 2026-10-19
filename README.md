@@ -1,4 +1,4 @@
-# Kaiku — Echoes Home
+# Kaiku: Echoes Home
 
 A sideways shoot-'em-up for the terminal, with typing. An Asciiverse game.
 
@@ -18,7 +18,7 @@ cargo run --release
 |---|---|
 | Arrows, or Ctrl+h/j/k/l | fly |
 | Space | fire (hold) |
-| a–z | type: lock onto an echo or a power-up's word, and decode it |
+| a-z | type: lock onto an echo or a power-up's word, and decode it |
 | Backspace | drop the lock (progress is kept) |
 | Enter | smart bomb; on the map, fly on |
 | Tab | dash: a burst of speed you can't be hit in |
