@@ -1,10 +1,10 @@
 //! The gamepad: the pilot's controls, so one player can fly while another
 //! types. Gamepads are first-class in Asciiverse (uXo's rule); this follows
 //! Ceres: gilrs, only SDL-mapped devices (`KAIKU_ANY_PAD=1` accepts any), pads
-//! hot-plug. Left stick or d-pad flies, the stick in proportion; South (A)
-//! fires; East (B) or the left bumper drops a smart bomb; West (X) or the
-//! right bumper dashes; Start pauses. A also
-//! confirms: on the map, and to fly again after a run.
+//! hot-plug. Buttons go by position (gilrs' South is Xbox A but Switch B).
+//! Left stick or d-pad flies, the stick in proportion; South fires; East or
+//! the left bumper drops a smart bomb; West or the right bumper dashes; Start
+//! pauses. South also confirms: on the map, and to fly again after a run.
 
 /// Stick deadzone, as in uXo.
 #[cfg_attr(not(feature = "gamepad"), allow(dead_code))]
@@ -43,6 +43,12 @@ pub fn shape(v: f32) -> f32 {
 pub struct Pad {
     #[cfg(feature = "gamepad")]
     gilrs: Option<gilrs::Gilrs>,
+    /// the pad in use, for rumble
+    #[cfg(feature = "gamepad")]
+    id: Option<gilrs::GamepadId>,
+    /// effects still playing: dropping one stops it
+    #[cfg(feature = "gamepad")]
+    rumbles: Vec<(gilrs::ff::Effect, std::time::Instant)>,
     /// the pad in use, by name, while one is connected
     pub name: Option<String>,
     pub state: PadState,
@@ -60,6 +66,10 @@ impl Pad {
         let mut pad = Pad {
             #[cfg(feature = "gamepad")]
             gilrs: None,
+            #[cfg(feature = "gamepad")]
+            id: None,
+            #[cfg(feature = "gamepad")]
+            rumbles: Vec::new(),
             name: None,
             state: PadState::default(),
             presses: PadPresses::default(),
@@ -67,9 +77,12 @@ impl Pad {
         #[cfg(feature = "gamepad")]
         match gilrs::Gilrs::new() {
             Ok(g) => {
-                let all: Vec<_> = g.gamepads().map(|(_, p)| (p.name().to_string(), usable(&p))).collect();
-                log::info!("gamepads (name, used): {all:?}");
-                pad.name = all.into_iter().find(|(_, used)| *used).map(|(n, _)| n);
+                let all: Vec<_> = g.gamepads().map(|(id, p)| (id, p.name().to_string(), usable(&p), p.is_ff_supported())).collect();
+                log::info!("gamepads (id, name, used, rumble): {all:?}");
+                if let Some((id, name, _, _)) = all.into_iter().find(|p| p.2) {
+                    pad.id = Some(id);
+                    pad.name = Some(name);
+                }
                 pad.gilrs = Some(g);
             }
             Err(e) => log::warn!("gamepad support unavailable: {e}"),
@@ -90,11 +103,13 @@ impl Pad {
                 }
                 match ev.event {
                     EventType::Connected => {
+                        self.id = Some(ev.id);
                         self.name = Some(pad.name().to_string());
                         log::info!("gamepad connected: {:?}", self.name);
                     }
                     EventType::Disconnected => {
                         log::info!("gamepad disconnected");
+                        self.id = None;
                         self.name = None;
                         self.state = PadState::default();
                         continue;
@@ -124,6 +139,55 @@ impl Pad {
                 };
             }
         }
+    }
+
+    /// Rumbles the pad: `strong` and `weak` motors 0 to 1, for `ms`, as uXo
+    /// does. Nothing happens without a pad that can.
+    #[cfg_attr(not(feature = "gamepad"), allow(unused_variables))]
+    pub fn rumble(&mut self, strong: f32, weak: f32, ms: u32) {
+        #[cfg(feature = "gamepad")]
+        {
+            use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Replay, Ticks};
+            let now = std::time::Instant::now();
+            self.rumbles.retain(|(_, until)| *until > now);
+            let (Some(id), Some(g)) = (self.id, &mut self.gilrs) else { return };
+            if !g.gamepad(id).is_ff_supported() {
+                return;
+            }
+            let dur = Ticks::from_ms(ms);
+            let mag = |v: f32| (v.clamp(0.0, 1.0) * u16::MAX as f32) as u16;
+            let built = EffectBuilder::new()
+                .add_effect(BaseEffect { kind: BaseEffectType::Strong { magnitude: mag(strong) }, scheduling: Replay { play_for: dur, ..Default::default() }, envelope: Default::default() })
+                .add_effect(BaseEffect { kind: BaseEffectType::Weak { magnitude: mag(weak) }, scheduling: Replay { play_for: dur, ..Default::default() }, envelope: Default::default() })
+                .repeat(gilrs::ff::Repeat::For(dur))
+                .gamepads(&[id])
+                .finish(g);
+            match built.and_then(|e| e.play().map(|_| e)) {
+                Ok(e) => self.rumbles.push((e, now + std::time::Duration::from_millis(ms as u64 + 50))),
+                Err(e) => log::debug!("rumble failed: {e}"),
+            }
+        }
+    }
+
+    /// What the pilot feels: hits and losses hard, the bomb and the jump big,
+    /// and a small pulse when comms decodes an echo or claims a power-up, so
+    /// the pilot feels the other player's work.
+    pub fn feel(&mut self, cue: crate::game::cue::Cue) {
+        use crate::game::cue::Cue;
+        let (strong, weak, ms) = match cue {
+            Cue::ShieldHit => (0.45, 0.3, 120),
+            Cue::LifeLost => (1.0, 0.6, 380),
+            Cue::GameOver => (1.0, 1.0, 700),
+            Cue::Bomb => (0.8, 0.8, 350),
+            Cue::Jump => (0.35, 0.5, 300),
+            Cue::BigKill => (0.3, 0.2, 110),
+            Cue::Beam => (0.2, 0.0, 200),
+            Cue::Dash => (0.0, 0.4, 80),
+            Cue::Decoded | Cue::Claimed => (0.15, 0.5, 90),
+            Cue::ExtraLife => (0.0, 0.6, 200),
+            _ => return,
+        };
+        self.rumble(strong, weak, ms);
     }
 
     /// The one-shot presses since the last call.

@@ -23,16 +23,20 @@ cargo run --release
 | Enter | smart bomb; on the map, fly on |
 | Tab | dash: a burst of speed you can't be hit in |
 | Esc | pause (y quits) |
+| F8 | sound on/off (`--mute` starts silent) |
 
 **Two players:** plug in a gamepad and one flies while the other types.
 
 | Gamepad (the pilot) | |
 |---|---|
 | Left stick or d-pad | fly (the stick in proportion) |
-| A | fire (hold); confirm on the map and the end screens |
-| B or left bumper | smart bomb |
-| X or right bumper | dash |
-| Start | pause |
+| Bottom face button (Xbox A, Switch B) | fire (hold); confirm on the map and the end screens |
+| Right face button or left bumper | smart bomb |
+| Left face button or right bumper | dash |
+| Start / + | pause |
+
+The pad rumbles: hard when you're hit, big for bombs and jumps, and a small
+pulse when comms decodes an echo or claims a power-up.
 
 The keyboard (comms) types the echoes and power-up words; it can still fly
 too, so one player can do it all. Only SDL-mapped pads are used;

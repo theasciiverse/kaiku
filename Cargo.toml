@@ -9,11 +9,14 @@ ratatui = "0.30"
 log = "0.4"
 env_logger = "0.11"
 gilrs = { version = "0.11", optional = true }
+rodio = { version = "0.22", default-features = false, features = ["playback"], optional = true }
 
 [features]
-# gamepads are first-class in Asciiverse; build without with --no-default-features
-default = ["gamepad"]
+# gamepads are first-class in Asciiverse, and the sound is synthesised in the
+# game; build without either with --no-default-features
+default = ["gamepad", "sound"]
 gamepad = ["dep:gilrs"]
+sound = ["dep:rodio"]
 
 [profile.release]
 debug = 1

@@ -2,6 +2,7 @@
 
 pub mod chatter;
 pub mod cockpit;
+pub mod cue;
 pub mod echo;
 pub mod enemy;
 pub mod fx;
@@ -21,6 +22,7 @@ pub mod typing;
 use crate::input::Controls;
 use chatter::Chatter;
 use cockpit::Cockpit;
+use cue::Cue;
 use enemy::{Action, Enemy, Kind, Side};
 use fx::{Particle, Tint};
 use powerup::{Pod, PodSpawner, PowerUp, Powers};
@@ -142,6 +144,8 @@ pub struct Game {
     pub cockpit: Option<Cockpit>,
     /// the turn under way is the one out of the cockpit
     first_turn: bool,
+    /// moments to be heard and felt, drained by the main loop each frame
+    pub cues: Vec<Cue>,
     /// a line for the receiver (jump results), and seconds it has left
     pub note: Option<(String, f32)>,
     spawner: Spawner,
@@ -184,6 +188,7 @@ impl Game {
             turn_dir: 1.0,
             cockpit: None,
             first_turn: false,
+            cues: Vec::new(),
             note: None,
             spawner: Spawner::default(),
             rng,
@@ -266,7 +271,11 @@ impl Game {
 
     pub fn update(&mut self, c: &Controls) {
         self.tick += 1;
+        let crawl = (self.state == State::Intro).then(|| intro::shown(self.state_t).trim_end().len());
         self.state_t += DT;
+        if crawl.is_some_and(|n| intro::shown(self.state_t).trim_end().len() > n) {
+            self.cues.push(Cue::Typewriter);
+        }
         // through a portal the stars streak past
         let warp = if self.state == State::Turn { 6.0 } else { 1.0 };
         self.stars.update(DT, warp, self.w, self.h, &mut self.rng);
@@ -310,6 +319,7 @@ impl Game {
         if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h, interval) {
             let (x, y) = self.ship.nose();
             self.shots.push(Shot::new(x, y, SHOT_SPEED, 0.0, Owner::Player));
+            self.cues.push(Cue::Shot);
             if self.powers.spread {
                 for vy in [-45.0, 45.0] {
                     self.shots.push(Shot::new(x - 2.0, y, SHOT_SPEED * 0.95, vy, Owner::Player));
@@ -332,7 +342,18 @@ impl Game {
         if self.state == State::Flight {
             let was = self.sector.phase;
             let pod_letters: Vec<char> = self.pods.iter().filter(|p| p.live()).filter_map(Target::next_letter).collect();
+            let verdicts: Vec<_> = self.sector.echoes.iter().map(|e| e.verdict()).collect();
             self.sector.update(war_dt, self.w, self.h, &pod_letters, &mut self.rng);
+            for (e, before) in self.sector.echoes.iter().zip(verdicts) {
+                match (before, e.verdict()) {
+                    (echo::Verdict::Pending, echo::Verdict::Jammed) => self.cues.push(Cue::Jammed),
+                    (echo::Verdict::Pending, echo::Verdict::Steady) => self.cues.push(Cue::Steady),
+                    _ => {}
+                }
+            }
+            if was == Phase::Flight && self.sector.phase == Phase::Portals {
+                self.cues.push(Cue::GatesOpen);
+            }
             if was == Phase::Flight && self.sector.phase == Phase::Portals && self.sector.number.is_multiple_of(GUARD_EVERY) {
                 self.send_guard();
             }
@@ -340,7 +361,14 @@ impl Game {
         }
         let target_y = self.ship.center().1;
         for i in 0..self.enemies.len() {
-            match self.enemies[i].update(war_dt, self.w, self.h, target_y, &mut self.rng) {
+            let beam = self.enemies[i].beam().map(|b| b.live);
+            let action = self.enemies[i].update(war_dt, self.w, self.h, target_y, &mut self.rng);
+            match (beam, self.enemies[i].beam().map(|b| b.live)) {
+                (None, Some(false)) => self.cues.push(Cue::Warning),
+                (Some(false), Some(true)) => self.cues.push(Cue::Beam),
+                _ => {}
+            }
+            match action {
                 Action::None => {}
                 Action::Fire => self.enemy_fires(i),
                 Action::Fan => self.enemy_fan(i),
@@ -354,6 +382,9 @@ impl Game {
         }
         // a jammer on screen scrambles every echo in range
         let jam = if self.enemies.iter().any(|e| e.kind == Kind::Jammer && e.hp > 0 && e.x < self.w) { JAM } else { 0.0 };
+        if jam > 0.0 && !self.sector.echoes.is_empty() && self.sector.echoes.iter().all(|e| e.jam == 0.0) {
+            self.cues.push(Cue::Jamming);
+        }
         for e in &mut self.sector.echoes {
             e.jam = jam;
         }
@@ -377,6 +408,13 @@ impl Game {
                 self.shots.push(Shot::new(x, y, a.cos() * ENEMY_SHOT_SPEED, a.sin() * ENEMY_SHOT_SPEED, Owner::Enemy(side)));
             }
         }
+        for e in self.enemies.iter().filter(|e| e.hp == 0) {
+            self.cues.push(match e.kind {
+                Kind::Scout | Kind::Interceptor => Cue::Kill,
+                Kind::Mine => Cue::Shrapnel,
+                _ => Cue::BigKill,
+            });
+        }
         self.enemies.retain(|e| e.hp > 0 && !e.gone());
         fx::update(&mut self.particles, DT);
         self.extends();
@@ -388,7 +426,15 @@ impl Game {
     /// A typed letter, for the typing layer.
     pub fn type_letter(&mut self, c: char) {
         if let (State::Cockpit, Some(cockpit)) = (self.state, &mut self.cockpit) {
+            let log = cockpit.log.len();
+            let missed = cockpit.flash;
             cockpit.key(c);
+            self.cues.push(match () {
+                _ if cockpit.log.len() > log => Cue::Repaired,
+                // a miss sets the flash; a hit leaves it as it was
+                _ if cockpit.flash > missed => Cue::Miss,
+                _ => Cue::Key,
+            });
             return;
         }
         if self.state != State::Flight {
@@ -410,13 +456,16 @@ impl Game {
         if matches!(key, Key::Miss | Key::Stray) {
             self.stats.misses += 1;
         }
+        self.cues.push(if matches!(key, Key::Miss | Key::Stray) { Cue::Miss } else { Cue::Key });
         let Key::Done(id) = key else { return };
         if let Some(e) = self.sector.echo(id) {
             log::info!("decoded echo {id} truth={} {:?}", e.truth, e.text);
             self.score += 50 * e.text.len() as u32;
             self.stats.echoes += 1;
+            self.cues.push(Cue::Decoded);
         } else if let Some(i) = self.pods.iter().position(|p| p.id == id) {
             self.stats.pods += 1;
+            self.cues.push(Cue::Claimed);
             let pod = self.pods.remove(i);
             self.claim(pod);
         }
@@ -452,6 +501,7 @@ impl Game {
     /// trail of afterimages.
     pub fn dash(&mut self, c: &Controls) {
         if self.state == State::Flight && self.ship.start_dash(c) {
+            self.cues.push(Cue::Dash);
             let (cx, cy) = self.ship.center();
             fx::burst(&mut self.particles, cx, cy, 10, 25.0, Tint::Player, &mut self.rng);
             log::debug!("dash");
@@ -466,6 +516,7 @@ impl Game {
         }
         self.powers.bombs -= 1;
         self.bomb_t = 0.0;
+        self.cues.push(Cue::Bomb);
         for e in self.enemies.iter_mut().filter(|e| e.x < self.w && e.hp > 0) {
             e.hp = 0;
             let m = self.chain.link();
@@ -487,6 +538,12 @@ impl Game {
 
     fn set_state(&mut self, state: State) {
         log::info!("state {:?} -> {state:?}", self.state);
+        match state {
+            State::Turn => self.cues.push(Cue::Jump),
+            State::Home => self.cues.push(Cue::Home),
+            State::Over => self.cues.push(Cue::GameOver),
+            _ => {}
+        }
         if matches!(state, State::Over | State::Home) && self.score > self.best {
             self.best = self.score;
             self.record = true;
@@ -552,6 +609,7 @@ impl Game {
             self.next_extend += EXTEND_EVERY;
             if self.ship.lives < MAX_LIVES {
                 self.ship.lives += 1;
+                self.cues.push(Cue::ExtraLife);
                 self.power_note = Some(("+ extra life".to_string(), 2.5));
                 log::info!("extra life at {}", self.score);
             }
@@ -641,7 +699,11 @@ impl Game {
             if owner == Owner::Player {
                 if let Some(p) = self.pods.iter_mut().find(|p| !p.done && p.aabb().contains(s.x, s.y)) {
                     s.spent = true;
-                    let n = if p.shot() { 10 } else { 3 };
+                    let broken = p.shot();
+                    if broken {
+                        self.cues.push(Cue::PodBroken);
+                    }
+                    let n = if broken { 10 } else { 3 };
                     fx::burst(&mut self.particles, s.x, s.y, n, 30.0, Tint::Spark, &mut self.rng);
                     continue;
                 }
@@ -699,8 +761,12 @@ impl Game {
         }
         match hit {
             None => {}
-            Some(Hit::Shield) => fx::burst(&mut self.particles, cx, cy, 6, 35.0, Tint::Spark, &mut self.rng),
+            Some(Hit::Shield) => {
+                self.cues.push(Cue::ShieldHit);
+                fx::burst(&mut self.particles, cx, cy, 6, 35.0, Tint::Spark, &mut self.rng);
+            }
             Some(Hit::Life) => {
+                self.cues.push(Cue::LifeLost);
                 fx::burst(&mut self.particles, cx, cy, 30, 60.0, Tint::Player, &mut self.rng);
                 if let Some(lost) = self.powers.lose_one() {
                     self.power_note = Some((format!("- {}", lost.name()), 2.5));
@@ -1149,5 +1215,20 @@ mod tests {
         g.ship.y = p.y + 4.0;
         g.update(&Controls::default());
         assert_eq!(g.state, State::Flight, "no jump while it slides in");
+    }
+
+    #[test]
+    fn moments_become_cues() {
+        let mut g = game();
+        g.enemies.push(Enemy::scout(Side::Amber, 60.0, 30.0, 0.0, &mut Rng::new(1)));
+        let c = g.enemies[0].aabb().center();
+        g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Player));
+        g.update(&Controls { dx: 0.0, dy: 0.0, fire: true });
+        assert!(g.cues.contains(&Cue::Kill) && g.cues.contains(&Cue::Shot));
+        g.cues.clear();
+        g.ship.grace = 0.0;
+        g.ship_hit(ship::BULLET_DAMAGE);
+        g.dash(&Controls::default());
+        assert_eq!(g.cues, vec![Cue::ShieldHit, Cue::Dash]);
     }
 }
