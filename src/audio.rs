@@ -79,6 +79,7 @@ mod synth {
             Cue::Jammed => (0.07, vec![notes(&[60.0, 54.0], Pulse, 0.3, 2)]),
             Cue::Steady => (0.07, vec![fade(notes(&[72.0, 79.0], Tri, 0.4, 2), 0.6)]),
             Cue::Jump => (0.03, vec![fade(slide(48.0, 96.0, 40, Tri, 0.25, 0.55), 0.7), slide(40.0, 70.0, 40, Noise, 0.2, 0.0)]),
+            Cue::Cell => (0.02, vec![fade(notes(&[84.0, 91.0], Tri, 0.3, 1), 0.4)]),
             Cue::ExtraLife => (0.035, vec![fade(notes(&[72.0, 76.0, 79.0, 84.0, 88.0, 91.0], Square, 0.4, 1), 0.6)]),
             Cue::Home => (0.18, vec![fade(notes(&[60.0, 64.0, 67.0, 72.0, 76.0, 79.0, 84.0], Tri, 0.4, 1), 0.6)]),
             Cue::Typewriter => (0.004, vec![vec![(100.0, Noise, 0.25), (100.0, Noise, 0.08)]]),
@@ -86,7 +87,8 @@ mod synth {
         }
     }
 
-    pub const ALL: [Cue; 25] = [
+    pub const ALL: [Cue; 26] = [
+        Cue::Cell,
         Cue::Shot,
         Cue::Kill,
         Cue::BigKill,

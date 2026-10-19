@@ -139,6 +139,10 @@ Enemy fleets don't carry words; only **power-ups** and **echoes** do.
 - **Tunnel walls:** from sector 2 the tunnel has walls of rock, ice or the
   war's wreckage, at most a cell and a half deep. Scraping one costs a
   little shield and pushes you off.
+- **Drops:** ships you shoot down sometimes leave a power-up (a pulsing
+  diamond) or a shield cell (a small cyan cross: one segment of the ten
+  back), collected by flying into them. Bigger ships leave more; a carrier
+  always leaves both. *(Rates tuned by probe, still to playtest.)*
 - **Power-ups:** spread shot, rapid fire, a shield refill, smart bombs
   (Enter; up to three), an escort drone, and slow time. Losing a life costs
   only the newest weapon power-up.

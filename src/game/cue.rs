@@ -35,6 +35,8 @@ pub enum Cue {
     /// into a gate: the turn
     Jump,
     ExtraLife,
+    /// a shield cell collected: one segment back
+    Cell,
     Home,
     /// a letter of the opening crawl, or a repair answered in the cockpit
     Typewriter,

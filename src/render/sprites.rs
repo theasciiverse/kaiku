@@ -3,7 +3,7 @@
 use super::canvas::Canvas;
 use super::palette::{self, Rgb};
 use crate::game::enemy::{Kind, Side};
-use crate::game::powerup::PowerUp;
+use crate::game::powerup::{Loot, PowerUp};
 
 /// The player's ship, nose to the right: 9×5 pixels (`SHIP_W`×`SHIP_H` dots).
 pub const SHIP: [&str; 5] = [
@@ -29,8 +29,19 @@ pub const POD: [&str; 3] = [".oo.", "oXXo", ".oo."];
 /// A power-up a ship left behind: a small diamond, no word on it. 3×3 pixels.
 pub const DROP: [&str; 3] = [".o.", "oXo", ".o."];
 
+/// A shield cell: a small cross in the shield's cyan. 3×3 pixels.
+pub const CELL: [&str; 3] = [".c.", "ccc", ".c."];
+
 /// A drop pulses between its colour and white, so it catches the eye.
-pub fn draw_drop(canvas: &mut Canvas, kind: PowerUp, x: i32, y: i32, tick: u64) {
+pub fn draw_drop(canvas: &mut Canvas, loot: Loot, x: i32, y: i32, tick: u64) {
+    let kind = match loot {
+        Loot::Power(kind) => kind,
+        Loot::Cell => {
+            let c = if (tick / 8).is_multiple_of(2) { (190, 236, 255) } else { (60, 210, 200) };
+            draw_with(canvas, &CELL, x, y, |ch| (ch == 'c').then_some(c));
+            return;
+        }
+    };
     let core = power_color(kind);
     let glint = if (tick / 8).is_multiple_of(2) { (255, 255, 255) } else { core };
     draw_with(canvas, &DROP, x, y, |c| match c {

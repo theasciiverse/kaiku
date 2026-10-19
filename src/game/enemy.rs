@@ -66,13 +66,23 @@ impl Kind {
     /// The chance a kill leaves a power-up behind: bigger ships, better odds.
     pub fn drop_chance(self) -> f32 {
         match self {
-            Kind::Scout => 0.04,
-            Kind::Interceptor => 0.08,
-            Kind::Mine => 0.10,
-            Kind::Gunship => 0.20,
-            Kind::Lancer => 0.25,
-            Kind::Jammer => 0.5,
+            Kind::Scout => 0.03,
+            Kind::Interceptor => 0.06,
+            Kind::Mine => 0.06,
+            Kind::Gunship => 0.12,
+            Kind::Lancer => 0.15,
+            Kind::Jammer => 0.35,
             Kind::Carrier => 1.0,
+        }
+    }
+
+    /// The chance a kill leaves a shield cell: one in twenty-five for small
+    /// ships, about one in twelve for the bigger ones, always for a carrier.
+    pub fn cell_chance(self) -> f32 {
+        match self {
+            Kind::Scout | Kind::Interceptor => 0.04,
+            Kind::Carrier => 1.0,
+            _ => 0.08,
         }
     }
 

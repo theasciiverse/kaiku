@@ -185,6 +185,7 @@ impl Pad {
             Cue::Dash => (0.0, 0.4, 80),
             Cue::Decoded | Cue::Claimed => (0.15, 0.5, 90),
             Cue::ExtraLife => (0.0, 0.6, 200),
+            Cue::Cell => (0.0, 0.25, 50),
             _ => return,
         };
         self.rumble(strong, weak, ms);

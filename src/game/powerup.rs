@@ -319,11 +319,23 @@ mod power_tests {
     }
 }
 
-/// A power-up a destroyed ship left behind: no word, the pilot flies into it.
+/// What a destroyed ship can leave behind.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Loot {
+    /// one of the power-ups
+    Power(PowerUp),
+    /// one segment of shield back
+    Cell,
+}
+
+/// One segment of the ten in the shield bar.
+pub const CELL: f32 = 0.1;
+
+/// Something a destroyed ship left behind: no word, the pilot flies into it.
 /// It drifts with the tunnel until collected or gone.
 #[derive(Clone, Debug)]
 pub struct Drop {
-    pub kind: PowerUp,
+    pub kind: Loot,
     pub x: f32,
     pub y: f32,
     base_y: f32,
@@ -334,9 +346,10 @@ pub struct Drop {
 /// Drop size in dots (3×3 half-block pixels), and how they drift.
 pub const DROP_SIZE: f32 = 6.0;
 const DROP_DRIFT: f32 = 14.0;
-/// What drops: weighted toward shields, bombs and weapons.
+/// What drops: weighted toward bombs and weapons; a full shield is rare,
+/// since shield cells come on their own.
 const DROP_WEIGHTS: [(PowerUp, f32); 6] = [
-    (PowerUp::Shield, 1.6),
+    (PowerUp::Shield, 0.5),
     (PowerUp::Bomb, 1.2),
     (PowerUp::Spread, 1.0),
     (PowerUp::Rapid, 1.0),
@@ -345,7 +358,7 @@ const DROP_WEIGHTS: [(PowerUp, f32); 6] = [
 ];
 
 impl Drop {
-    /// Maybe a drop where a ship died, by its chance.
+    /// Maybe a power-up where a ship died, by its chance.
     pub fn roll(chance: f32, x: f32, y: f32, rng: &mut Rng) -> Option<Drop> {
         if rng.unit() >= chance {
             return None;
@@ -356,9 +369,17 @@ impl Drop {
             roll -= wt;
             roll <= 0.0
         });
-        let kind = kind.map_or(PowerUp::Shield, |k| k.0);
+        Some(Drop::at(Loot::Power(kind.map_or(PowerUp::Shield, |k| k.0)), x, y))
+    }
+
+    /// Maybe a shield cell where a ship died, by its chance.
+    pub fn roll_cell(chance: f32, x: f32, y: f32, rng: &mut Rng) -> Option<Drop> {
+        (rng.unit() < chance).then(|| Drop::at(Loot::Cell, x, y))
+    }
+
+    fn at(kind: Loot, x: f32, y: f32) -> Drop {
         let (x, y) = (x - DROP_SIZE / 2.0, y - DROP_SIZE / 2.0);
-        Some(Drop { kind, x, y, base_y: y, age: 0.0, done: false })
+        Drop { kind, x, y, base_y: y, age: 0.0, done: false }
     }
 
     /// A little bigger than the sprite: easy to grab on the fly.

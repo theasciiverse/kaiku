@@ -25,7 +25,7 @@ use cockpit::Cockpit;
 use cue::Cue;
 use enemy::{Action, Enemy, Kind, Side};
 use fx::{Particle, Tint};
-use powerup::{Drop, Pod, PodSpawner, PowerUp, Powers};
+use powerup::{Drop, Loot, Pod, PodSpawner, PowerUp, Powers};
 use rng::Rng;
 use route::Route;
 use sector::{Phase, Sector};
@@ -419,9 +419,15 @@ impl Game {
         }
         for e in self.enemies.iter().filter(|e| e.hp == 0 && e.by_player) {
             let (cx, cy) = e.aabb().center();
-            if let Some(d) = Drop::roll(e.kind.drop_chance(), cx, cy, &mut self.rng) {
+            // a power-up, or failing that perhaps a shield cell, a little apart
+            let drop = Drop::roll(e.kind.drop_chance(), cx, cy, &mut self.rng).or_else(|| Drop::roll_cell(e.kind.cell_chance(), cx, cy, &mut self.rng));
+            if let Some(d) = drop {
                 log::debug!("drop {:?} from {:?}", d.kind, e.kind);
                 self.drops.push(d);
+            }
+            if e.kind == Kind::Carrier {
+                // a carrier leaves both
+                self.drops.extend(Drop::roll_cell(1.0, cx + 10.0, cy, &mut self.rng));
             }
         }
         for d in &mut self.drops {
@@ -429,7 +435,7 @@ impl Game {
         }
         if self.state == State::Flight {
             let ship = self.ship.aabb();
-            let grabbed: Vec<PowerUp> = self.drops.iter_mut().filter(|d| !d.done && d.aabb().overlaps(&ship)).map(|d| {
+            let grabbed: Vec<Loot> = self.drops.iter_mut().filter(|d| !d.done && d.aabb().overlaps(&ship)).map(|d| {
                 d.done = true;
                 d.kind
             }).collect();
@@ -501,9 +507,19 @@ impl Game {
         }
     }
 
-    /// The pilot flies into a drop: the power-up, no typing needed.
-    fn collect(&mut self, kind: PowerUp) {
-        log::info!("collected a {kind:?} drop");
+    /// The pilot flies into a drop: a power-up, or a cell of shield back, no
+    /// typing needed.
+    fn collect(&mut self, loot: Loot) {
+        log::info!("collected a {loot:?} drop");
+        let kind = match loot {
+            Loot::Power(kind) => kind,
+            Loot::Cell => {
+                self.ship.shield = (self.ship.shield + powerup::CELL).min(1.0);
+                self.score += 25;
+                self.cues.push(Cue::Cell);
+                return;
+            }
+        };
         self.score += 100;
         self.stats.pods += 1;
         self.powers.take(kind, (self.ship.x, self.ship.y));
@@ -1121,9 +1137,10 @@ mod tests {
     #[test]
     #[ignore]
     fn probe_survival_per_sector() {
+        const SEEDS: u64 = 24;
         for level in [1, 2, 3, 5] {
             let mut total = 0.0;
-            for seed in 0..8 {
+            for seed in 0..SEEDS {
                 let mut g = Game::new(seed);
                 g.resize(96, 22);
                 g.sector = Sector::new(level, 0.0, &mut Rng::new(seed));
@@ -1146,7 +1163,7 @@ mod tests {
                 }
                 total += t as f32 / 60.0;
             }
-            println!("sector {level}: a naive pilot lasts {:.0} s on average", total / 8.0);
+            println!("sector {level}: a naive pilot lasts {:.0} s on average", total / SEEDS as f32);
         }
     }
 
@@ -1300,7 +1317,8 @@ mod tests {
         let c = g.enemies[0].aabb().center();
         g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Player));
         g.update(&Controls::default());
-        assert_eq!(g.drops.len(), 1, "a carrier always drops");
+        assert_eq!(g.drops.len(), 2, "a carrier always drops, and a cell besides");
+        g.drops.truncate(1);
         let d = g.drops[0].clone();
         g.ship.x = d.x - 6.0;
         g.ship.y = d.y - 3.0;
@@ -1318,5 +1336,16 @@ mod tests {
         g.shots.push(Shot::new(c.0, c.1, 0.0, 0.0, Owner::Enemy(Side::Amber)));
         g.update(&Controls::default());
         assert!(g.drops.is_empty());
+    }
+
+    #[test]
+    fn a_shield_cell_restores_one_segment() {
+        let mut g = game();
+        g.ship.shield = 0.5;
+        let (x, y) = g.ship.center();
+        g.drops.extend(Drop::roll_cell(1.0, x, y, &mut Rng::new(1)));
+        g.update(&Controls::default());
+        assert!((g.ship.shield - 0.6).abs() < 1e-5, "{}", g.ship.shield);
+        assert!(g.cues.contains(&Cue::Cell));
     }
 }
