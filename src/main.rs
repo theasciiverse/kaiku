@@ -1,4 +1,5 @@
 mod audio;
+mod demo;
 mod game;
 mod highscore;
 mod input;
@@ -46,14 +47,15 @@ fn main() -> io::Result<()> {
 }
 
 /// Command line: `--sector N` starts straight in sector N (no crawl, no
-/// cockpit), for trying later sectors; `--skip-intro` starts in sector 1.
+/// cockpit), for trying later sectors; `--skip-intro` starts in sector 1;
+/// `--demo` lets the game play itself, from sector 1 unless told otherwise.
 fn start(game: &mut Game) {
     let args: Vec<String> = std::env::args().collect();
     let flag = |name: &str| args.iter().position(|a| a == name);
     if let Some(i) = flag("--sector") {
         let n = args.get(i + 1).and_then(|n| n.parse().ok()).unwrap_or(1);
         game.start_at(n);
-    } else if flag("--skip-intro").is_some() {
+    } else if flag("--skip-intro").is_some() || flag("--demo").is_some() {
         game.start_at(1);
     } else {
         game.start_intro();
@@ -70,6 +72,8 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
     // the best score is saved once per run, when the run ends on a record
     let mut saved = false;
     let mut input = Input::new(kitty);
+    let mut demo = std::env::args().any(|a| a == "--demo").then(demo::Autopilot::default);
+    input.demo = demo.is_some();
     let mut next = Instant::now() + TICK;
     while !input.quit {
         let play = render::play_area(terminal.size()?.into());
@@ -100,6 +104,10 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
             loop {
                 if let Event::Key(k) = event::read()? {
                     log::debug!("key {:?}", k);
+                    // the demo plays itself: any key ends it
+                    if demo.is_some() && k.kind == event::KeyEventKind::Press {
+                        input.quit = true;
+                    }
                     input.on_key(k, Instant::now());
                 }
                 if !event::poll(Duration::ZERO)? {
@@ -110,6 +118,13 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
         let now = Instant::now();
         let mut steps = 0;
         while now >= next && steps < 5 {
+            // the autopilot's moves stand in for the player's
+            let moves = demo.as_mut().map(|d| d.moves(&game));
+            if let Some(m) = &moves {
+                input.typed.extend(m.letter);
+                input.bomb |= m.enter;
+                input.dash |= m.dash;
+            }
             if !input.confirm_quit && !input.help {
                 if game.state == game::State::Intro && (input.bomb || !input.typed.is_empty()) {
                     game.intro_key();
@@ -132,7 +147,10 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 if std::mem::take(&mut input.drop_lock) {
                     game.drop_lock();
                 }
-                let controls = input::Input::with_pad(input.controls(now), &pad.state);
+                let controls = match &moves {
+                    Some(m) => m.controls,
+                    None => input::Input::with_pad(input.controls(now), &pad.state),
+                };
                 if std::mem::take(&mut input.dash) {
                     game.dash(&controls);
                 }
@@ -157,7 +175,8 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
             pad.feel(cue);
         }
         audio.music(music::ctrl_for(&game));
-        if game.finished() && game.record && !saved {
+        // a demo's score isn't yours
+        if game.finished() && game.record && !saved && demo.is_none() {
             highscore::save(game.best);
             saved = true;
         }

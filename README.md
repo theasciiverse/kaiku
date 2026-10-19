@@ -61,7 +61,8 @@ Terminals with the kitty keyboard protocol (kitty, foot, WezTerm, Ghostty
 and others) give exact key presses and releases. Elsewhere Kaiku reads key
 repeat timing; if held keys feel wrong, try `KAIKU_INPUT=latch`.
 
-Flags: `--skip-intro`, `--sector N` (start in a later sector).
+Flags: `--skip-intro`, `--sector N` (start in a later sector), `--demo` (the
+game plays itself; any key quits), `--mute`, `--no-music`.
 
 ## Credits and sources
 

@@ -160,6 +160,8 @@ pub struct Input {
     pub confirm_quit: bool,
     /// F1: the controls card is up (the game waits)
     pub help: bool,
+    /// `--demo`: the game is playing itself
+    pub demo: bool,
     /// the gamepad in use, if one is connected: two can play, pilot and comms
     pub pad_name: Option<String>,
 }
@@ -195,6 +197,7 @@ impl Input {
             quit: false,
             confirm_quit: false,
             help: false,
+            demo: false,
             pad_name: None,
         }
     }

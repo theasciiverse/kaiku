@@ -94,6 +94,7 @@ Gamepad support (on by default, via gilrs) needs `pkg-config` and
 cargo run --release                     # play
 cargo run --release -- --sector 3       # straight into sector 3 (carriers, lancers, jammers)
 cargo run --release -- --skip-intro     # straight into sector 1
+cargo run --release -- --demo           # the game plays itself (attract mode, preview recordings)
 KAIKU_INPUT=latch cargo run --release   # latched keys, for terminals where timing feels wrong
 RUST_LOG=debug cargo run --release 2>kaiku.log
 cargo test

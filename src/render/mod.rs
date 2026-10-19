@@ -43,6 +43,7 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     panel::powerups(buf, l.powerups, &game.powers.owned(), game.tick);
     // with a pad in, two can play: say who does what
     let note = match (&input.pad_name, input.mode_note()) {
+        _ if input.demo => Some("DEMO · any key quits".to_string()),
         (Some(_), Some(m)) => Some(format!("PILOT · pad   COMMS · keys  ·  {m}")),
         (Some(_), None) => Some("PILOT · pad   COMMS · keys".to_string()),
         (None, m) => m.map(str::to_string),
