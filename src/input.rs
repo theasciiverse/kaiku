@@ -151,6 +151,8 @@ pub struct Input {
     pub drop_lock: bool,
     /// Enter: smart bomb.
     pub bomb: bool,
+    /// Tab: dash.
+    pub dash: bool,
     pub quit: bool,
     /// Esc was pressed: show the quit question and wait for y.
     pub confirm_quit: bool,
@@ -184,6 +186,7 @@ impl Input {
             typed: Vec::new(),
             drop_lock: false,
             bomb: false,
+            dash: false,
             quit: false,
             confirm_quit: false,
             pad_name: None,
@@ -243,6 +246,7 @@ impl Input {
             }
             KeyCode::Backspace if press => self.drop_lock = true,
             KeyCode::Enter if press => self.bomb = true,
+            KeyCode::Tab if press => self.dash = true,
             KeyCode::Esc if press => self.confirm_quit = true,
             _ => {}
         }

@@ -80,7 +80,10 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
             input.confirm_quit = !input.confirm_quit;
         }
         match game.state {
-            game::State::Flight => input.bomb |= presses.bomb,
+            game::State::Flight => {
+                input.bomb |= presses.bomb;
+                input.dash |= presses.dash;
+            }
             game::State::Cockpit => {}
             _ => input.bomb |= presses.confirm,
         }
@@ -121,10 +124,15 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 if std::mem::take(&mut input.drop_lock) {
                     game.drop_lock();
                 }
-                game.update(&input::Input::with_pad(input.controls(now), &pad.state));
+                let controls = input::Input::with_pad(input.controls(now), &pad.state);
+                if std::mem::take(&mut input.dash) {
+                    game.dash(&controls);
+                }
+                game.update(&controls);
             }
             input.typed.clear();
             input.bomb = false;
+            input.dash = false;
             next += TICK;
             steps += 1;
         }

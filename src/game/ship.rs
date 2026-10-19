@@ -17,6 +17,12 @@ const HIT_GRACE: f32 = 0.4;
 /// Invulnerable after losing a life (respawn in place).
 const RESPAWN_GRACE: f32 = 2.0;
 
+/// The dash: a short burst of speed, invulnerable while it lasts, then a
+/// cooldown before the next.
+pub const DASH_TIME: f32 = 0.32;
+pub const DASH_COOLDOWN: f32 = 1.5;
+const DASH_SPEED: f32 = 2.6;
+
 /// What a hit cost.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Hit {
@@ -34,12 +40,16 @@ pub struct Ship {
     pub lives: u8,
     /// seconds of invulnerability left
     pub grace: f32,
+    /// seconds of dash left, its heading, and seconds until the next is ready
+    pub dash: f32,
+    dash_dir: (f32, f32),
+    pub dash_cool: f32,
     cooldown: f32,
 }
 
 impl Ship {
     pub fn new(h: f32) -> Ship {
-        Ship { x: 8.0, y: (h - SHIP_H) / 2.0, shield: 1.0, lives: 3, grace: 0.0, cooldown: 0.0 }
+        Ship { x: 8.0, y: (h - SHIP_H) / 2.0, shield: 1.0, lives: 3, grace: 0.0, dash: 0.0, dash_dir: (1.0, 0.0), dash_cool: 0.0, cooldown: 0.0 }
     }
 
     /// Moves within the field; returns true when the gun fires this tick, at
@@ -52,6 +62,12 @@ impl Ship {
             dx /= len;
             dy /= len;
         }
+        if self.dash > 0.0 {
+            // the dash holds its heading at full burst, whatever the stick says
+            (dx, dy) = (self.dash_dir.0 * DASH_SPEED, self.dash_dir.1 * DASH_SPEED);
+            self.dash = (self.dash - dt).max(0.0);
+        }
+        self.dash_cool = (self.dash_cool - dt).max(0.0);
         self.x += dx * SPEED * dt;
         self.y += dy * SPEED * dt;
         self.clamp(w, h);
@@ -62,6 +78,22 @@ impl Ship {
             return true;
         }
         false
+    }
+
+    /// Starts a dash the way the controls point (forward if they point
+    /// nowhere), if one is ready; returns true if it started.
+    pub fn start_dash(&mut self, c: &Controls) -> bool {
+        if self.dash_cool > 0.0 {
+            return false;
+        }
+        let (dx, dy) = (c.dx.clamp(-1.0, 1.0), c.dy.clamp(-1.0, 1.0));
+        let len = (dx * dx + dy * dy).sqrt();
+        self.dash_dir = if len < 0.2 { (1.0, 0.0) } else { (dx / len, dy / len) };
+        self.dash = DASH_TIME;
+        self.dash_cool = DASH_COOLDOWN;
+        // invulnerable for the burst: dash through a bullet or a beam
+        self.grace = self.grace.max(DASH_TIME);
+        true
     }
 
     pub fn clamp(&mut self, w: f32, h: f32) {
@@ -127,5 +159,21 @@ mod tests {
         s.lives = 1;
         s.shield = 0.0;
         assert_eq!(s.hit(RAM_DAMAGE), Some(Hit::Dead));
+    }
+
+    #[test]
+    fn a_dash_bursts_the_way_you_steer_shields_you_and_cools_down() {
+        let mut s = Ship::new(80.0);
+        s.x = 50.0;
+        let up = Controls { dx: 0.0, dy: -1.0, fire: false };
+        assert!(s.start_dash(&up));
+        assert!(s.hit(BULLET_DAMAGE).is_none(), "invulnerable while dashing");
+        let y = s.y;
+        s.update(&Controls::default(), 0.1, 200.0, 80.0, 0.1);
+        assert!(y - s.y > SPEED * 0.1 * 2.0, "fast, and still going up with the stick let go");
+        assert!(!s.start_dash(&up), "cooling down");
+        s.update(&Controls::default(), DASH_COOLDOWN, 200.0, 80.0, 0.1);
+        assert!(s.start_dash(&Controls::default()), "ready again; with no steer it goes forward");
+        assert_eq!(s.dash_dir, (1.0, 0.0));
     }
 }

@@ -154,6 +154,8 @@ pub struct Hud<'a> {
     pub bombs: u8,
     pub score: u32,
     pub multiplier: u32,
+    /// the dash's cooldown, 0 (ready) to 1 (just used)
+    pub dash: f32,
     /// on the right: e.g. the input mode when it isn't exact
     pub note: Option<&'a str>,
 }
@@ -161,7 +163,7 @@ pub struct Hud<'a> {
 /// HUD line: shield bar, lives, smart bombs, score and chain multiplier, and
 /// the note on the right.
 pub fn hud(buf: &mut Buffer, area: Rect, h: &Hud) {
-    let Hud { shield, lives, bombs, score, multiplier, note } = *h;
+    let Hud { shield, lives, bombs, score, multiplier, dash, note } = *h;
     let bg = Style::default().bg(CHROME_BG);
     for x in area.left()..area.right() {
         put(buf, x, area.y, " ", bg);
@@ -183,17 +185,30 @@ pub fn hud(buf: &mut Buffer, area: Rect, h: &Hud) {
             x = put(buf, x, area.y, "● ", bg.fg(palette::rgb((255, 96, 168))));
         }
     }
+    // DASH lights up when it's ready, and fills back in while it cools
+    let ready = dash <= 0.0;
+    let lit = ((1.0 - dash) * 4.0).floor() as usize;
+    x = put(buf, x + 2, area.y, "DASH ", if ready { bg.fg(TEXT).add_modifier(Modifier::BOLD) } else { bg.fg(DIM) });
+    for i in 0..4 {
+        let fg = if ready || i < lit { palette::rgb(palette::SIGNAL[1]) } else { TRACE };
+        x = put(buf, x, area.y, "▮", bg.fg(fg));
+    }
     x = put(buf, x + 2, area.y, "SCORE ", bg.fg(DIM));
     x = put(buf, x, area.y, &format!("{score:07}"), bg.fg(TEXT).add_modifier(Modifier::BOLD));
     if multiplier > 1 {
         put(buf, x + 1, area.y, &format!("×{multiplier}"), bg.fg(palette::ramp(&palette::SIGNAL, multiplier as f32 / 8.0)).add_modifier(Modifier::BOLD));
     }
-    let right = match note {
-        Some(n) => format!("{n}  ·  esc quit "),
-        None => "esc quit ".to_string(),
-    };
-    let rx = area.right().saturating_sub(right.chars().count() as u16);
-    put(buf, rx, area.y, &right, bg.fg(DIM));
+    // the note on the right gives way when the line is short: the score and
+    // the gauges come first
+    let left_end = x + if multiplier > 1 { 4 } else { 0 };
+    let full = note.map(|n| format!("{n}  ·  esc quit "));
+    for right in full.iter().map(String::as_str).chain(["esc quit "]) {
+        let rx = area.right().saturating_sub(right.chars().count() as u16);
+        if rx > left_end + 1 {
+            put(buf, rx, area.y, right, bg.fg(DIM));
+            break;
+        }
+    }
 }
 
 /// A small centred question box over the play area.

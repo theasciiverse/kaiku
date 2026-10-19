@@ -301,6 +301,11 @@ impl Game {
                 }
             }
         }
+        // a dash leaves a trail of afterimages
+        if self.ship.dash > 0.0 && self.tick.is_multiple_of(2) {
+            let (cx, cy) = self.ship.center();
+            fx::burst(&mut self.particles, cx - 4.0, cy, 2, 6.0, Tint::Player, &mut self.rng);
+        }
         let interval = if self.powers.rapid { 0.06 } else { 0.11 };
         if self.state == State::Flight && self.ship.update(c, DT, self.w, self.h, interval) {
             let (x, y) = self.ship.nose();
@@ -441,6 +446,16 @@ impl Game {
         let mut targets: Vec<&mut dyn Target> =
             self.sector.echoes.iter_mut().map(|e| e as &mut dyn Target).chain(self.pods.iter_mut().map(|p| p as &mut dyn Target)).collect();
         self.typing.drop_lock(&mut targets);
+    }
+
+    /// Tab (or the pad's X / right bumper): a dash, if one is ready, with a
+    /// trail of afterimages.
+    pub fn dash(&mut self, c: &Controls) {
+        if self.state == State::Flight && self.ship.start_dash(c) {
+            let (cx, cy) = self.ship.center();
+            fx::burst(&mut self.particles, cx, cy, 10, 25.0, Tint::Player, &mut self.rng);
+            log::debug!("dash");
+        }
     }
 
     /// Enter: a smart bomb, if one is carried. Every ship on screen goes, and

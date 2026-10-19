@@ -53,6 +53,7 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
         bombs: game.powers.bombs,
         score: game.score,
         multiplier: game.chain.multiplier(),
+        dash: game.ship.dash_cool / crate::game::ship::DASH_COOLDOWN,
         note: note.as_deref(),
     };
     chrome::hud(buf, l.hud, &hud);

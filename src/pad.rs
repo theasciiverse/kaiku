@@ -2,7 +2,8 @@
 //! types. Gamepads are first-class in Asciiverse (uXo's rule); this follows
 //! Ceres: gilrs, only SDL-mapped devices (`KAIKU_ANY_PAD=1` accepts any), pads
 //! hot-plug. Left stick or d-pad flies, the stick in proportion; South (A)
-//! fires; East (B) and the bumpers drop a smart bomb; Start pauses. A also
+//! fires; East (B) or the left bumper drops a smart bomb; West (X) or the
+//! right bumper dashes; Start pauses. A also
 //! confirms: on the map, and to fly again after a run.
 
 /// Stick deadzone, as in uXo.
@@ -22,6 +23,7 @@ pub struct PadState {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PadPresses {
     pub bomb: bool,
+    pub dash: bool,
     pub confirm: bool,
     pub pause: bool,
 }
@@ -101,7 +103,8 @@ impl Pad {
                         log::debug!("pad press {b:?}");
                         match b {
                             Button::South => self.presses.confirm = true,
-                            Button::East | Button::LeftTrigger | Button::RightTrigger => self.presses.bomb = true,
+                            Button::East | Button::LeftTrigger => self.presses.bomb = true,
+                            Button::West | Button::RightTrigger => self.presses.dash = true,
                             Button::Start => self.presses.pause = true,
                             _ => {}
                         }

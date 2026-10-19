@@ -21,6 +21,7 @@ cargo run --release
 | a–z | type: lock onto an echo or a power-up's word, and decode it |
 | Backspace | drop the lock (progress is kept) |
 | Enter | smart bomb; on the map, fly on |
+| Tab | dash: a burst of speed you can't be hit in |
 | Esc | pause (y quits) |
 
 **Two players:** plug in a gamepad and one flies while the other types.
@@ -29,7 +30,8 @@ cargo run --release
 |---|---|
 | Left stick or d-pad | fly (the stick in proportion) |
 | A | fire (hold); confirm on the map and the end screens |
-| B or a bumper | smart bomb |
+| B or left bumper | smart bomb |
+| X or right bumper | dash |
 | Start | pause |
 
 The keyboard (comms) types the echoes and power-up words; it can still fly
