@@ -87,6 +87,8 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 input.bomb |= presses.bomb;
                 input.dash |= presses.dash;
             }
+            // the scene is all typing: the pad's one job here is to skip it
+            game::State::Cockpit if presses.confirm => game.skip_cockpit(),
             game::State::Cockpit => {}
             _ => input.bomb |= presses.confirm,
         }

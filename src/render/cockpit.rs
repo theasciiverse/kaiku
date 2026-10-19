@@ -14,17 +14,77 @@ use ratatui::style::{Color, Modifier, Style};
 const DASH: Rgb = (20, 25, 38);
 const DASH_EDGE: Rgb = (64, 76, 100);
 const STRUT: Color = Color::Rgb(52, 62, 84);
+const RING: Color = Color::Rgb(200, 186, 168);
 const MISS_BG: Color = Color::Rgb(70, 22, 40);
+
+/// A banded gas giant with a tilted ring, out of the window, lit from the
+/// left. Half-block pixels for the body, Braille dots for the ring. `w` and
+/// `dash_top` are in cells.
+fn planet(canvas: &mut Canvas, w: i32, dash_top: i32, tick: u64) {
+    let (ph, pw) = (dash_top as f32 * 2.0, w as f32);
+    let r = (ph * 0.36).max(4.0);
+    let (cx, cy) = (pw * 0.68, ph * 0.46);
+    // the ring's far side: behind the planet
+    ring(canvas, cx, cy, r, true);
+    let turn = tick as f32 / 400.0;
+    for py in (cy - r) as i32..=(cy + r) as i32 {
+        for px in (cx - r) as i32..=(cx + r) as i32 {
+            let (dx, dy) = (px as f32 - cx, py as f32 - cy);
+            if dx * dx + dy * dy > r * r || py >= dash_top * 2 {
+                continue;
+            }
+            // bands across the latitude, gently wavy as it turns
+            let lat = dy / r;
+            let band = ((lat * 9.0 + (dx / r * 2.0 + turn).sin() * 0.3).sin() * 0.5 + 0.5).clamp(0.0, 1.0);
+            let base = palette::lerp((150, 96, 120), (214, 170, 140), band);
+            // lit from the upper left, the night side falls to the dark
+            let light = (0.95 - (dx / r) * 0.55 - (dy / r) * 0.25).clamp(0.08, 1.0);
+            canvas.pixel(px, py, palette::rgb(palette::lerp((8, 8, 18), base, light)));
+        }
+    }
+    // the near side of the ring: in front of it
+    ring(canvas, cx, cy, r, false);
+}
+
+/// Half of the ring: the far (upper) half or the near (lower) one, in dots.
+fn ring(canvas: &mut Canvas, cx: f32, cy: f32, r: f32, far: bool) {
+    // in dots: a half-block pixel is 2×2 dots
+    let (dcx, dcy, dr) = (cx * 2.0 + 1.0, cy * 2.0 + 1.0, r * 2.0);
+    for i in 0..360 {
+        let a = i as f32 / 360.0 * std::f32::consts::TAU;
+        let (x, y) = (a.cos() * dr * 1.7, a.sin() * dr * 0.35);
+        // tilt the ring
+        let (tx, ty) = (x * 0.97 - y * 0.24, x * 0.24 + y * 0.97);
+        let behind = a.sin() < 0.0;
+        if behind != far {
+            continue;
+        }
+        let (pdx, pdy) = (tx / 2.0, ty / 2.0);
+        let over_disc = pdx * pdx + pdy * pdy < r * r;
+        match (far, over_disc) {
+            // behind the planet's disc it is hidden
+            (true, true) => {}
+            // in front of the disc a dot would vanish under its pixels: draw a pixel
+            (false, true) => canvas.pixel((cx + pdx) as i32, (cy + pdy) as i32, RING),
+            _ => canvas.dot((dcx + tx) as i32, (dcy + ty) as i32, RING),
+        }
+    }
+}
 
 pub fn draw(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game, c: &Cockpit) {
     let (w, h) = (play.width as i32, play.height as i32);
     // the dashboard takes the lower third, in cells
     let dash_top = h - (h / 3).max(6);
-    for s in &game.stars.stars {
+    // the ship is adrift: the stars hold still and twinkle, and a ringed
+    // planet hangs in the window, slowly turning
+    for (i, s) in game.stars.stars.iter().enumerate() {
         if (s.y as i32) < dash_top * 4 {
-            canvas.dot(s.x as i32, s.y as i32, palette::STAR[s.layer as usize]);
+            let twinkle = (i as u64 * 7919 + game.tick / 12).is_multiple_of(23);
+            let layer = if twinkle { 2 } else { s.layer as usize };
+            canvas.dot(s.x as i32, s.y as i32, palette::STAR[layer]);
         }
     }
+    planet(canvas, w, dash_top, game.tick);
     // window struts, in dots: from the top corners down to the dashboard
     let (dw, dt) = (w * 2, dash_top * 4);
     for (x0, x1) in [(0, dw / 8), (dw - 1, dw - 1 - dw / 8)] {
@@ -95,6 +155,6 @@ pub fn draw(canvas: &mut Canvas, buf: &mut Buffer, play: Rect, game: &Game, c: &
     for (i, line) in lines.iter().skip(skip).enumerate() {
         echoes::put_cells(buf, x as i32, play.y + dash_top as u16 + 1 + i as u16, line, play);
     }
-    let hint: Vec<(char, Style)> = "enter: skip".chars().map(|ch| (ch, Style::default().fg(TRACE).bg(bg))).collect();
-    echoes::put_cells(buf, play.right() as i32 - 13, play.bottom() - 1, &hint, play);
+    let hint: Vec<(char, Style)> = "enter or pad: skip".chars().map(|ch| (ch, Style::default().fg(TRACE).bg(bg))).collect();
+    echoes::put_cells(buf, play.right() as i32 - hint.len() as i32 - 2, play.bottom() - 1, &hint, play);
 }

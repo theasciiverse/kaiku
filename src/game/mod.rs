@@ -277,7 +277,13 @@ impl Game {
             self.cues.push(Cue::Typewriter);
         }
         // through a portal the stars streak past
-        let warp = if self.state == State::Turn { 6.0 } else { 1.0 };
+        // the stars stream past in flight, streak through a turn, and hold
+        // still while the ship drifts dead in the cockpit scene
+        let warp = match self.state {
+            State::Turn => 6.0,
+            State::Cockpit => 0.0,
+            _ => 1.0,
+        };
         self.stars.update(DT, warp, self.w, self.h, &mut self.rng);
         if self.state == State::Turn && self.state_t >= TURN_TIME {
             // the first turn, out of the cockpit, goes straight into sector 1
@@ -1230,5 +1236,19 @@ mod tests {
         g.ship_hit(ship::BULLET_DAMAGE);
         g.dash(&Controls::default());
         assert_eq!(g.cues, vec![Cue::ShieldHit, Cue::Dash]);
+    }
+
+    #[test]
+    fn the_stars_hold_still_in_the_cockpit() {
+        let mut g = game();
+        g.start_intro();
+        g.intro_key();
+        g.intro_key();
+        let before: Vec<f32> = g.stars.stars.iter().map(|s| s.x).collect();
+        for _ in 0..120 {
+            g.update(&Controls::default());
+        }
+        let after: Vec<f32> = g.stars.stars.iter().map(|s| s.x).collect();
+        assert_eq!(before, after, "the ship is adrift, not flying");
     }
 }
