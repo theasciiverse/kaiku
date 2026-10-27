@@ -10,9 +10,17 @@ clear, and pick the right gate. Can you make it home?!
 
 ## Play
 
+With [av](https://asciiverse.sh), the Asciiverse client:
+
 ```
-cargo run --release
+av install kaiku
+av play kaiku
 ```
+
+Or download the archive for your system from this repository's Releases,
+unpack it and run `./kaiku` (`kaiku.exe` on Windows).
+
+To build it yourself: `cargo run --release`.
 
 | Keys | |
 |---|---|
