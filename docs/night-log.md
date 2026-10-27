@@ -2,7 +2,7 @@
 
 You asked for work on other enemies, gameplay and other things overnight.
 This is what got done, what I decided on your behalf, and what to look at
-first. Fourteen commits, from `7e37f86` to the end of the night; each can be
+first. Fourteen commits, from `2598f47` to the end of the night; each can be
 reviewed or reverted on its own. Tests went from 51 to 75, all passing.
 Clippy is clean.
 
@@ -19,7 +19,7 @@ cargo run --release                   # the whole thing from the crawl
 
 ## What's new
 
-**Five new enemies** (`7e37f86`), each with one clear job and a readable
+**Five new enemies** (`2598f47`), each with one clear job and a readable
 tell:
 
 | Ship | From sector | Tell / what it does |
@@ -35,35 +35,35 @@ and interceptors. From sector 2 come mines, lancers and jammers; from 3,
 carriers. Jammers and carriers come at most once per sector, and each
 sector runs 6% faster than the last, down to 70% of the starting gap.
 
-**Gate guards** (`a4275de`): every third sector a carrier glides in to hold
+**Gate guards** (`8728787`): every third sector a carrier glides in to hold
 in front of the gates as they open.
 
-**Tunnel walls** (`9f1a3be`): from sector 2, jagged bands of rock, ice or
+**Tunnel walls** (`8a495c0`): from sector 2, jagged bands of rock, ice or
 the war's wreckage along the top and bottom, at most a cell and a half
 deep. A scrape costs a little shield and pushes you off. Sector 1 stays open
 space.
 
 **Scoring and the run:**
-- **Kill chains** (`a375130`): kills within 2.5 s of each other chain; every
+- **Kill chains** (`c0242af`): kills within 2.5 s of each other chain; every
   5 links add ×1, up to ×8. The multiplier shows next to the score, and any
   hit breaks the chain.
 - **Run summary** at SIGNAL LOST or HOME: score and best, sectors (true /
   detours), kills and best chain, echoes and pods decoded, typing accuracy,
   time.
 - **High score** saved in `~/.local/share/kaiku/highscore`, as tty-rex does.
-- **Extra lives** at 30,000, then every 60,000, up to 5 (`5e3a6f8`).
+- **Extra lives** at 30,000, then every 60,000, up to 5 (`8927c0b`).
 - **The shield recharges at every jump**, a nod to Zendocon's docking
   re-arm.
 
 **Fairness and comfort:**
 - **Enemy fire is drawn over everything**, echo text and words included
-  (`be4edca`). Before this, a word could hide a bullet.
-- **Pods take 3 hits**, cracking visibly, before they're lost (`8c89dac`).
+  (`664d776`). Before this, a word could hide a bullet.
+- **Pods take 3 hits**, cracking visibly, before they're lost (`3063ae7`).
   Held auto-fire used to kill them before you could type a letter.
 - **Calmer echo blink**, about 3 Hz instead of 6.
 - **Esc now reads as a pause** ("y: quit · any other key: fly on").
 
-**Atmosphere:** ship-to-ship chatter (`48ee0f1`). With no echoes about, the
+**Atmosphere:** ship-to-ship chatter (`6e1d041`). With no echoes about, the
 receiver picks up the fleets talking to each other, e.g. *JADE-5: that
 civilian is still out there, flying home*. The lines are in
 `data/chatter.txt`. Nine more public-domain transmissions joined
@@ -80,16 +80,16 @@ civilian is still out there, flying home*. The lines are in
   | `probe` (naive pilot: weaves, fires, avoids walls) | ~99 s in sector 1, ~64 s in 2, ~59 s by 5 |
   | `frame_cost` (busy frame at 200×60) | ~0.3 ms |
 
-**A bug fixed** (`9b0cef0`): far out on detours, the *true* echo could read
+**A bug fixed** (`cfa8d5d`): far out on detours, the *true* echo could read
 fainter than the fakes, because closeness went negative. It's now clamped.
 
-**Found by a later bug-hunt pass** (`77c4868`): shrinking the terminal to
+**Found by a later bug-hunt pass** (`3cf451d`): shrinking the terminal to
 a sliver mid-game crashed (a pod's clamp). It's fixed, and a test now draws
-every state at sizes from 10×4 to 240×70. Also (`376dad5`): a letter could
+every state at sizes from 10×4 to 240×70. Also (`c745144`): a letter could
 lock onto an echo or pod still entering off the right edge, unseen. Only
-on-screen targets can be locked now. And (`36bcaeb`): a new echo could
+on-screen targets can be locked now. And (`fc91679`): a new echo could
 share its first letter with a live pod, so one key could mean either; echoes
-now avoid pods' letters too. And (`d0f863a`): a gate sliding in could
+now avoid pods' letters too. And (`9ce401f`): a gate sliding in could
 sweep up a ship parked at the right edge; gates open only once settled.
 
 ## Decisions I made for you

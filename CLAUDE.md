@@ -2,7 +2,7 @@
 
 **Status:** Fresh start (2026-10-18). This file holds only what has been
 decided. Earlier plans (v0.1 vertical rain, v0.2 language-faction shmup) are
-**not binding**. They stay in git history (`a3c8492`, `4f1c36c`) as a quarry
+**not binding**. They stay in git history (`a3c8492`, `7579e6b`) as a quarry
 of ideas, not a spec. Don't hold the design to them.
 
 ## Decided
