@@ -143,8 +143,8 @@ fn run(terminal: &mut DefaultTerminal, kitty: bool) -> io::Result<()> {
                 // Enter on the game-over screen flies again
                 if input.bomb {
                     match game.state {
-                        // home, then the credits, then fly again
-                        game::State::Home => game.roll_credits(),
+                        // the welcome home, the summary, the credits, then fly again
+                        game::State::Home => game.home_key(),
                         game::State::Over | game::State::Credits => game.restart(),
                         game::State::Map => game.fly_on(),
                         game::State::Cockpit => game.skip_cockpit(),

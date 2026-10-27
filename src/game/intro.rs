@@ -1,5 +1,6 @@
 //! The opening story crawl, after the NES Metroid intro: the text types itself
-//! out letter by letter, a blank line is a breath. The text is `data/intro.txt`.
+//! out letter by letter, a blank line is a breath. The text is `data/intro.txt`;
+//! the closing crawl at home (`super::home`) types out the same way.
 
 /// Letters per second.
 const CPS: f32 = 26.0;
@@ -10,11 +11,11 @@ pub fn text() -> &'static str {
     include_str!("../../data/intro.txt").trim_end()
 }
 
-/// The time each character appears at, in seconds, in text order.
-fn times() -> impl Iterator<Item = (char, f32)> {
+/// The time each character of `text` appears at, in seconds, in text order.
+fn times(text: &str) -> impl Iterator<Item = (char, f32)> + '_ {
     let mut t = 0.0;
     let mut prev = ' ';
-    text().chars().map(move |c| {
+    text.chars().map(move |c| {
         t += match c {
             '\n' if prev == '\n' => 2.0 * LINE_PAUSE,
             '\n' => LINE_PAUSE,
@@ -27,12 +28,22 @@ fn times() -> impl Iterator<Item = (char, f32)> {
 
 /// Seconds until the whole text is out.
 pub fn duration() -> f32 {
-    times().last().map_or(0.0, |(_, t)| t)
+    duration_of(text())
 }
 
 /// The text revealed after `secs`.
 pub fn shown(secs: f32) -> String {
-    times().take_while(|&(_, t)| t <= secs).map(|(c, _)| c).collect()
+    shown_of(text(), secs)
+}
+
+/// Seconds until all of `text` is out.
+pub fn duration_of(text: &str) -> f32 {
+    times(text).last().map_or(0.0, |(_, t)| t)
+}
+
+/// As much of `text` as is revealed after `secs`.
+pub fn shown_of(text: &str, secs: f32) -> String {
+    times(text).take_while(|&(_, t)| t <= secs).map(|(c, _)| c).collect()
 }
 
 #[cfg(test)]

@@ -12,9 +12,12 @@ of ideas, not a spec. Don't hold the design to them.
 - **A fair mix of typing and playing:** moving and shooting matter as much
   as typing. Space shoots; arrows and Ctrl+h/j/k/l move; Ctrl and other
   non-letter keys are free for actions.
-- **Full title: *Kaiku: Echoes Home*.** The story: an interplanetary war is raging. A surge has
-  thrown your ship far off course, and to get home you must find the right
-  portals by their echo. A little homage to *Gates of Zendocon* (Epyx,
+- **Full title: *Kaiku: Echoes Home*.** The story (David, 2026-10-27): you
+  are a fighter in an intergalactic war. A savage blast hurls your ship far
+  beyond the front line, deep into enemy space where no human has ever been;
+  both fleets are hostile, and to get home you must find the right portals by
+  their echo. At home Earth's fleet turns out to escort you in, and you are
+  welcomed as a hero (`src/game/home.rs`). A little homage to *Gates of Zendocon* (Epyx,
   Atari Lynx, 1989), the horizontal shmup whose worlds are linked by gates.
 - **What the echoes are:** a mashup of Earth's famous transmissions (Apollo
   ("The Eagle has landed"), JFK's "We choose to go to the Moon", the
@@ -69,9 +72,11 @@ of ideas, not a spec. Don't hold the design to them.
   are for later, if at all.
 - **Two players:** a gamepad flies (the pilot) while the keyboard types (comms).
   Plug in a pad and it's co-op; either alone can still do both.
-- **The fleets are Amber and Jade.** The opening crawl, the fleet chatter and the
-  credits (`data/intro.txt`, `data/chatter.txt`, `data/credits.txt`) are the
-  approved texts. The last echo, at home, is "we leave as we came" (Apollo 17).
+- **The fleets are Amber and Jade.** The opening crawl, the closing crawl, the
+  fleet chatter and the credits (`data/intro.txt`, `data/home.txt`,
+  `data/chatter.txt`, `data/credits.txt`) are the approved texts (intro, home
+  crawl and two chatter lines rewritten for the new story 2026-10-27). Never
+  "an Asciiverse game" anywhere: Asciiverse is a place of equals. The last echo, at home, is "we leave as we came" (Apollo 17).
   The Voyager greeting is out (2026-10-19): its rights were never checked.
 - **Name:** Kaiku (Finnish for "echo").
 

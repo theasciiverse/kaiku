@@ -162,6 +162,13 @@ pub fn draw(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, tick: u64) {
     draw_faded(canvas, art, x, y, tick, 0.0);
 }
 
+/// Draws a sprite flipped left to right: an escort flying away from Earth.
+pub fn draw_mirrored(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, tick: u64) {
+    let flipped: Vec<String> = art.iter().map(|l| l.chars().rev().collect()).collect();
+    let rows: Vec<&str> = flipped.iter().map(String::as_str).collect();
+    draw(canvas, &rows, x, y, tick);
+}
+
 /// Draws a sprite faded towards the chrome background by `fade` (0 = full
 /// colour): power-ups the ship doesn't have show as dim silhouettes.
 pub fn draw_faded(canvas: &mut Canvas, art: &[&str], x: i32, y: i32, tick: u64, fade: f32) {

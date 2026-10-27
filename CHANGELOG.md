@@ -5,9 +5,9 @@
 The first version of Kaiku: Echoes Home.
 
 ### The game
-- A sideways shoot-'em-up with typing: fly and fight through an
-  interplanetary war, decode garbled echoes of Earth's transmissions by
-  typing them, and take the right gate home.
+- A sideways shoot-'em-up with typing: blasted deep into enemy space, fight
+  your way through two hostile fleets, decode garbled echoes of Earth's
+  transmissions by typing them, and take the right gate home.
 - **Echoes** flicker between noise and clear; the true one is the clearest,
   and clearer the nearer home. Lock on with a letter (ZType-style), and the
   next letter you need always shows. The receiver analyses each decoded echo
@@ -27,7 +27,9 @@ The first version of Kaiku: Echoes Home.
 - **The opening:** a Metroid-style story crawl, the controls, then a cockpit
   scene where you repair the receiver (the tutorial), with the war far off
   in the window.
-- **Home:** Earth rises, the last echo plays clear, and the credits roll.
+- **Home:** Earth rises, the last echo plays clear, Earth's fighters fly out
+  and form up around your ship, and a closing crawl welcomes you home a hero.
+  Then how the run went, and the credits.
 
 ### Two players
 - Plug in a gamepad: one flies on the pad (the pilot), the other types on the

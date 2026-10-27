@@ -36,7 +36,9 @@ impl Autopilot {
         match game.state {
             State::Intro | State::Cockpit => m.enter = true,
             State::Map => m.enter = game.state_t > 2.5,
-            State::Over | State::Home => m.enter = game.state_t > 7.0,
+            State::Over => m.enter = game.state_t > 7.0,
+            // let the welcome play out, then a while on the summary
+            State::Home => m.enter = game.state_t > crate::game::home::summary_at() + 4.0,
             State::Credits => m.enter = game.state_t > 20.0,
             State::Turn => {}
             State::Flight => self.fly(game, &mut m),

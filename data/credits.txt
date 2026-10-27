@@ -1,8 +1,6 @@
 KAIKU
 ECHOES HOME
 
-an Asciiverse game
-
 
 created by
 David

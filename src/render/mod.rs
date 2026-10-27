@@ -12,7 +12,7 @@ mod sprites;
 use crate::game::enemy::Kind;
 use crate::game::fx::Tint;
 use crate::game::shot::Owner;
-use crate::game::{Game, State};
+use crate::game::{home, Game, State};
 use crate::input::Input;
 use canvas::Canvas;
 use ratatui::layout::Rect;
@@ -83,8 +83,16 @@ pub fn draw(f: &mut Frame, game: &Game, input: &Input) {
     if !input.confirm_quit {
         match game.state {
             State::Over => summary(buf, play, game, "signal lost"),
-            // let Earth rise a while before the words, and keep them off it
-            State::Home if game.state_t > 4.0 => summary(buf, Rect { width: play.width * 3 / 5, ..play }, game, "home"),
+            // the welcome between the escort and Earth, then how the run went,
+            // kept off Earth
+            State::Home if game.state_t >= home::summary_at() => summary(buf, Rect { width: play.width * 3 / 5, ..play }, game, "home"),
+            State::Home if game.state_t >= home::CRAWL_AT => {
+                let (cx, _, r) = home::earth(game.w, game.h, game.state_t);
+                let left = play.width / 4;
+                let right = ((cx - r) as u16).saturating_sub(2).max(left + 1).min(play.width);
+                let area = Rect { x: play.x + left, width: right - left, ..play };
+                journey::crawl(buf, area, home::text(), &home::shown(game.state_t), !home::crawling(game.state_t), game.tick);
+            }
             _ => {}
         }
     }
@@ -140,6 +148,14 @@ fn field(canvas: &mut Canvas, buf: &mut ratatui::buffer::Buffer, play: Rect, bg:
         for i in 0..360 {
             let a = i as f32 / 360.0 * std::f32::consts::TAU;
             canvas.dot((cx + a.cos() * r) as i32, (cy + a.sin() * r * 0.7) as i32, palette::rgb(sprites::power_color(crate::game::powerup::PowerUp::Bomb)));
+        }
+    }
+    // home: Earth's fighters fly out and form up round the ship
+    for e in game.escorts() {
+        if e.outbound {
+            sprites::draw_mirrored(canvas, &sprites::SHIP, px(e.x), px(e.y), game.tick);
+        } else {
+            sprites::draw(canvas, &sprites::SHIP, px(e.x), px(e.y), game.tick);
         }
     }
     // the ship blinks while invulnerable
@@ -379,7 +395,22 @@ mod tests {
         game.state_t = 5.0;
         let text = frame(&game, 100, 30);
         assert!(text.contains("we leave as we came"));
+        assert!(text.contains("EARTH."), "the welcome is typing");
+        assert!(!text.contains("enter: the credits"), "the summary waits for the welcome");
+        game.state_t = home::summary_at();
+        let text = frame(&game, 100, 30);
         assert!(text.contains("HOME") && text.contains("enter: the credits"));
+    }
+
+    #[test]
+    fn the_welcome_ends_on_the_hero() {
+        let mut game = Game::new(5);
+        let play = play_area(Rect::new(0, 0, 100, 30));
+        game.resize(play.width, play.height);
+        game.state = State::Home;
+        game.state_t = home::summary_at() - 1.0;
+        let text = frame(&game, 100, 30);
+        assert!(text.contains("WELCOME HOME, HERO."), "{text}");
     }
 
     #[test]
@@ -402,7 +433,7 @@ mod tests {
         game.start_intro();
         game.state_t = 2.0;
         let early = frame(&game, 100, 30);
-        assert!(early.contains("AN INTERPLANETARY WAR") && !early.contains("FOLLOW THEM"));
+        assert!(early.contains("AN INTERGALACTIC WAR") && !early.contains("FOLLOW THEM"));
         game.intro_key();
         let done = frame(&game, 100, 30);
         assert!(done.contains("FOLLOW THEM"), "the first key finishes the text");

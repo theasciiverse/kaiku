@@ -6,10 +6,10 @@ amber | AMBER-9 | unknown contact on the left flank, not one of theirs
 amber | AMBER-1 | all wings, regroup on the carrier
 amber | AMBER-6 | jammer is up, our scopes are blind
 amber | AMBER-4 | mines away, mind your heading
-amber | AMBER-2 | who is that little ship? leave it, it's not our war
+amber | AMBER-2 | a human fighter, this deep? cut it down
 jade | JADE-7 | lancer charging, clear the lane
 jade | JADE-2 | the surge took half the squadron, report in
-jade | JADE-5 | that civilian is still out there, flying home
+jade | JADE-5 | that human is still out there, running for the line
 jade | JADE-1 | intercept, intercept, they're breaking through
 jade | JADE-8 | keep the gates locked down, nobody leaves
 jade | JADE-3 | ammo low, falling back to the wreck field

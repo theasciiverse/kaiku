@@ -1,12 +1,12 @@
 # Kaiku: Echoes Home
 
-A sideways shoot-'em-up for the terminal, with typing. An Asciiverse game.
+**THE WAR IS RAGING. AND YOU'RE ON THE WRONG SIDE OF IT.**
 
-An interplanetary war is raging. A surge has flung your ship far off course,
-into a pocket of space where Earth's old transmissions bounce around as
-garbled echoes. Fly and fight through the crossfire, decode the echoes by
-typing them, and take the right gate each time: the clearer the echo, the
-nearer home.
+A savage blast has hurled your fighter far off course, deep into enemy
+territory where no human has ever been. Two hostile fleets close in from
+every side, and your only map home is Earth's old radio transmissions,
+garbled and bouncing in the dark. Blast your way through, type the echoes
+clear, and pick the right gate. Can you make it home?!
 
 ## Play
 

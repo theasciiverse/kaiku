@@ -6,6 +6,7 @@ pub mod cue;
 pub mod echo;
 pub mod enemy;
 pub mod fx;
+pub mod home;
 pub mod intro;
 pub mod powerup;
 pub mod rng;
@@ -217,6 +218,27 @@ impl Game {
         matches!(self.state, State::Over | State::Home | State::Credits)
     }
 
+    /// Enter at home: the first finishes the welcome, the next rolls the credits.
+    pub fn home_key(&mut self) {
+        if self.state != State::Home {
+            return;
+        }
+        if self.state_t < home::summary_at() {
+            self.state_t = home::summary_at();
+        } else {
+            self.roll_credits();
+        }
+    }
+
+    /// Earth's fighters, flying out to meet the ship at home.
+    pub fn escorts(&self) -> Vec<home::Escort> {
+        if self.state != State::Home {
+            return Vec::new();
+        }
+        let (cx, cy, _) = home::earth(self.w, self.h, self.state_t);
+        home::escorts(self.state_t, (self.ship.x, self.ship.y), (cx * 2.0, cy * 2.0))
+    }
+
     /// The credits roll: after home, or straight away with `--credits`.
     pub fn roll_credits(&mut self) {
         self.enemies.clear();
@@ -290,10 +312,23 @@ impl Game {
 
     pub fn update(&mut self, c: &Controls) {
         self.tick += 1;
-        let crawl = (self.state == State::Intro).then(|| intro::shown(self.state_t).trim_end().len());
+        // the crawls, opening and at home, type to the typewriter
+        let typed = |state: State, t: f32| match state {
+            State::Intro => Some(intro::shown(t).trim_end().len()),
+            State::Home => Some(home::shown(t).trim_end().len()),
+            _ => None,
+        };
+        let crawl = typed(self.state, self.state_t);
         self.state_t += DT;
-        if crawl.is_some_and(|n| intro::shown(self.state_t).trim_end().len() > n) {
+        if crawl.is_some_and(|n| typed(self.state, self.state_t).is_some_and(|m| m > n)) {
             self.cues.push(Cue::Typewriter);
+        }
+        // home: the ship drifts to its place, leaving room for the escort
+        if self.state == State::Home {
+            let (x, y) = home::ship_station(self.w, self.h);
+            let k = (DT * 1.5).min(1.0);
+            self.ship.x += (x - self.ship.x) * k;
+            self.ship.y += (y - self.ship.y) * k;
         }
         // through a portal the stars streak past
         // the stars stream past in flight, streak through a turn, and hold
