@@ -81,3 +81,7 @@ game plays itself; any key quits), `--credits`, `--mute`, `--no-music`.
 - **Input:** the held-key layer is adapted from Asciiverse's Entity.
 
 Design notes are in `CLAUDE.md` and `docs/`.
+
+## Licence
+
+MIT; see [LICENSE](LICENSE).
