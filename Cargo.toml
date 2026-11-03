@@ -1,6 +1,6 @@
 [package]
 name = "kaiku"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "Kaiku: Echoes Home, a sideways typing shmup for the terminal (Asciiverse)"
@@ -9,7 +9,7 @@ description = "Kaiku: Echoes Home, a sideways typing shmup for the terminal (Asc
 ratatui = "0.30"
 log = "0.4"
 env_logger = "0.11"
-gilrs = { version = "0.11", optional = true }
+gilrs = { version = "0.11", optional = true, default-features = false, features = ["xinput"] }
 rodio = { version = "0.22", default-features = false, features = ["playback"], optional = true }
 
 [features]
